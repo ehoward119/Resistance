@@ -1,4 +1,4 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+**Make sure** you have `npm` and `firebase` installed in your computer. Otherwise, if you pull you won't be able to run the app
 
 ## Available Scripts
 
