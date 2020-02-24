@@ -1,0 +1,26 @@
+/* Body CSS */ 
+.body {
+    padding: 10vh;
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #c7c7c7;
+}
+
+/* Temporary button style, modfied from https://fdossena.com/?p=html5cool/buttons/i.frag*/
+button{
+    display:inline-block;
+    padding:0.3em 1.2em;
+    margin:0.3em 0.3em 0.3em 0;
+    border-radius:0.12em;
+    box-sizing: border-box;
+    text-decoration:none;
+    font-weight:300;
+    color:#FFFFFF;
+    background-color:#4eb5f1;
+    border:solid #4eb5f1;
+    text-align:center;
+    transition: all 0.2s;
+}
