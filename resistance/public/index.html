@@ -24,20 +24,37 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>React App</title>
+    <title>Secret Sagehen</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+        <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/7.9.1/firebase-app.js"></script>
+
+    <!-- TODO: Add SDKs for Firebase products that you want to use
+        https://firebase.google.com/docs/web/setup#available-libraries -->
+    <script src="https://www.gstatic.com/firebasejs/7.9.1/firebase-analytics.js"></script>
+
+    <script>
+      // Your web app's Firebase configuration
+      var firebaseConfig = {
+        apiKey: "AIzaSyA2yzKvuuqK32rY5zqPpjbs1z-GLcIZFiw",
+        authDomain: "resistance-121.firebaseapp.com",
+        databaseURL: "https://resistance-121.firebaseio.com",
+        projectId: "resistance-121",
+        storageBucket: "resistance-121.appspot.com",
+        messagingSenderId: "122327094674",
+        appId: "1:122327094674:web:50eff2cdb5b92d73079d4b",
+        measurementId: "G-CTHR3HSL01"
+      };
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+      firebase.analytics();
+    </script>
+
+
+
+    <!-- Div that is rendered by React-->
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
-
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
   </body>
 </html>
