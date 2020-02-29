@@ -1,5 +1,6 @@
 import React from 'react';
 import './resources/css/Header.css';
+import { Link } from 'react-router-dom';
 
 // Function that creates the header in the landing page
 function Header() {
@@ -7,7 +8,9 @@ function Header() {
   return (
     <div className="Header"> 
       <header className="landing-header">
-        <h1>Secret Sagehen Resistance!</h1>
+        <Link to ="/">
+          <h1>Secret Sagehen Resistance!</h1>
+        </Link>
       </header>
     </div>
   );

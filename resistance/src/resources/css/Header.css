@@ -1,5 +1,5 @@
 /* Header CSS */
-.landing-header {
+header {
   background-color: #282c34;
   min-height: 10vh;
   display: flex;
@@ -7,5 +7,12 @@
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
+  color: white;
+}
+a {
+  text-decoration: none;
+}
+
+h1 {
   color: white;
 }
