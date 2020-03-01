@@ -7,11 +7,11 @@ function Header() {
   // Creates a simple header under the "Header Div"
   return (
     <div className="Header"> 
+      <Link to ="/">
       <header className="landing-header">
-        <Link to ="/">
           <h1>Secret Sagehen Resistance!</h1>
-        </Link>
       </header>
+      </Link>
     </div>
   );
 }
