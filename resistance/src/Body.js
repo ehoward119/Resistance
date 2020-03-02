@@ -6,15 +6,8 @@ import './resources/css/Body.css';
 function Body(){
     return (
         <div className="body">
-            <form>
-                <label>
-                    Name:
-                    <input type="text" name="name" />
-                </label>
-            </form>
             <button>Create Game</button>
             <button>Join Game</button>
-
         </div>
     )
 }
