@@ -4,7 +4,7 @@ import React from 'react';
 // STILL NOT DONE
 function Lobby() {
   return (
-    <div className="Lobby"> 
+    <div className="lobby"> 
       <header className="landing-header">
         <h1>Lobby</h1>
       </header>
