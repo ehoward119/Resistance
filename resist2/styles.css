@@ -1,0 +1,66 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+   background-color: #c7c7c7;;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Header CSS */
+header {
+  background-color: #282c34;
+  min-height: 8vh;
+  min-width: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+
+a {
+  text-decoration: none;
+}
+
+h1 {
+  color: white;
+}
+
+/* Body CSS */ 
+.content {
+  padding: 10vh;
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Temporary button style, modfied from https://fdossena.com/?p=html5cool/buttons/i.frag*/
+button{
+  display:inline-block;
+  padding:0.3em 1.2em;
+  margin:0.3em 0.3em 0.3em 0;
+  border-radius:0.12em;
+  box-sizing: border-box;
+  text-decoration:none;
+  font-weight:300;
+  color:#FFFFFF;
+  background-color:#4eb5f1;
+  border:solid #4eb5f1;
+  text-align:center;
+  transition: all 0.2s;
+}
+
+a {
+  text-decoration: none;
+}
