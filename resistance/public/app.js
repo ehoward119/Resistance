@@ -57,6 +57,10 @@ startForm.addEventListener('submit', (e) => {
 
 // helper function for starting a game
 async function startHelp(roomCode) {
+    // TESTING
+    console.log("TEST RESULT: " + (await getRoom(roomCode)));
+
+    
     const numPlayers = await getNumPlayers(roomCode);
     if (numPlayers >= 5 && numPlayers <= 10) {
         startGame(roomCode);
@@ -289,7 +293,7 @@ function setIsResistance(roomCode, name, value) {
 }
 
 // getter for vote
-function getVote(roomCode, name) {
+async function getVote(roomCode, name) {
     const player = await getPlayer(roomCode, name);
     return player.data().vote;
 }
@@ -310,7 +314,7 @@ function startGame(roomCode) {
 }
 
 // incremements the mission leader number
-function newLeader(roomCode) {
+async function newLeader(roomCode) {
     let ml_Num = await getMissionLeaderNum(roomCode) + 1;
     if(ml_Num >= await getNumPlayers(roomCode)) {
         ml_Num = 0;
@@ -333,7 +337,7 @@ function castVote(roomCode, name, value) {
 }
 
 // reset all votes, hasVoted
-function clearVotes(roomCode) {
+async function clearVotes(roomCode) {
     const doc = await getRoom(roomCode);
     doc.collection('Players').get().then(snapshot => {
         snapshot.docs.forEach(doc => {
@@ -343,3 +347,4 @@ function clearVotes(roomCode) {
         });
     });
 }
+
