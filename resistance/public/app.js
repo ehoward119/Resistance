@@ -48,30 +48,10 @@ createForm.addEventListener('submit', (e) => {
     }
 });
 
-// starting a game
-startForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    let roomCode = "SeanTest";
-    startHelp(roomCode);
-});
-
-// helper function for starting a game
-async function startHelp(roomCode) {
-    // TESTING
-    console.log("TEST RESULT: " + (await getRoom(roomCode)));
-
-    
-    const numPlayers = await getNumPlayers(roomCode);
-    if (numPlayers >= 5 && numPlayers <= 10) {
-        startGame(roomCode);
-    }
-    else {
-        console.log("Error: Wrong number of players. Must have between 5 and 10 players.");
-    }
-}
-
 /////////////////////////////////////////////////////////////////////////////
-// Possible Bug - Players with the same name will not be two separate players
+// Possible Bug 
+// - Players with the same name will not be two separate players
+// - also impacts rotNumber
 /////////////////////////////////////////////////////////////////////////////
 // joing a room
 joinForm.addEventListener('submit', (e) => {
@@ -108,6 +88,31 @@ joinForm.addEventListener('submit', (e) => {
     }
 });
 
+// starting a game
+startForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    let roomCode = "SeanTest";
+    startHelp(roomCode);
+});
+
+// helper function for starting a game
+async function startHelp(roomCode) {
+    // TESTING
+    const test = await getVote(roomCode, "Sean");
+    console.log("TEST RESULT: " + test);
+
+    
+    const numPlayers = await getNumPlayers(roomCode);
+    if (numPlayers >= 5 && numPlayers <= 10) {
+        startGame(roomCode);
+    }
+    else {
+        console.log("Error: Wrong number of players. Must have between 5 and 10 players.");
+    }
+}
+
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // NOT TESTED
 ///////////////////////////////////////////////////////////////////////////////
@@ -126,8 +131,7 @@ async function getRoom(roomCode) {
 
 // returns a player with a given name - null if none exists
 async function getPlayer(roomCode, name) { 
-    const room = await getRoom(roomCode);
-    const player = await room.collection('Players').doc(name).get();
+    const player = await db.collection('Rooms').doc(roomCode).collection('Players').doc(name).get();
     return player;
 }
 
@@ -247,16 +251,16 @@ function setMissionLeaderNum(roomCode, value) {
 
 // getter for rotNumber
 async function getRotNumber(roomCode, name) {
-    const doc = await getRoom(roomCode);
-    return doc.data().rotNumber;
+    const player = await getPlayer(roomCode, name);
+    return player.data().rotNumber;
 }
 
 // no rotNumber setter
 
 // getter for hasVoted
 async function getHasVoted(roomCode, name) {
-    const doc = await getRoom(roomCode);
-    return doc.data().hasVoted;
+    const player = await getPlayer(roomCode, name);
+    return player.data().hasVoted;
 }
 
 // setter for hasVoted
