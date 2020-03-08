@@ -28,7 +28,7 @@ createForm.addEventListener('submit', (e) => {
     e.preventDefault();
     if (createForm.name.value != '') {
         // random room code generator goes here
-        db.collection('Rooms').doc("RoomCode").set({
+        db.collection('Rooms').doc("SeanTest").set({
             isOpen: true,
             numPlayers: 1,
             round: 0,
@@ -37,8 +37,7 @@ createForm.addEventListener('submit', (e) => {
             spyScore: 0,
             missionLeaderNum: 0
         });
-        db.collection('Rooms').doc("RoomCode").collection("Players").add({
-            name: createForm.name.value,
+        db.collection('Rooms').doc("SeanTest").collection("Players").doc(createForm.name.value).set({
             rotNumber: 0,
             hasVoted: false,
             isMissionMember: false,
@@ -52,17 +51,24 @@ createForm.addEventListener('submit', (e) => {
 // starting a game
 startForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    let roomCode = "RoomCode";
-    let numPlayers = getNumPlayers(roomCode);
-    console.log(numPlayers);
-    if (numPlayers >= 5 || numPlayers <= 10) {
+    let roomCode = "SeanTest";
+    startHelp(roomCode);
+});
+
+// helper function for starting a game
+async function startHelp(roomCode) {
+    const numPlayers = await getNumPlayers(roomCode);
+    if (numPlayers >= 5 && numPlayers <= 10) {
         startGame(roomCode);
     }
     else {
         console.log("Error: Wrong number of players. Must have between 5 and 10 players.");
     }
-});
+}
 
+/////////////////////////////////////////////////////////////////////////////
+// Possible Bug - Players with the same name will not be two separate players
+/////////////////////////////////////////////////////////////////////////////
 // joing a room
 joinForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -84,8 +90,7 @@ joinForm.addEventListener('submit', (e) => {
                 db.collection("Rooms").doc(roomCode).update({
                     numPlayers: (room.data().numPlayers + 1),
                 });
-                db.collection("Rooms").doc(roomCode).collection("Players").add({
-                    name: joinForm.name.value,
+                db.collection('Rooms').doc(roomCode).collection("Players").doc(joinForm.name.value).set({
                     rotNumber: (room.data().numPlayers),
                     hasVoted: false,
                     isMissionMember: false,
@@ -110,31 +115,22 @@ joinForm.addEventListener('submit', (e) => {
 // * - indicate only a getter, these variables should not be changed during the game
 
 // returns the desired room - useful for getting data from the room
-function getRoom(roomCode) {
-    db.collection('Rooms').doc(roomCode).get().then(doc => {
-        console.log(doc);
-        return doc;
-    });
+async function getRoom(roomCode) {
+    const doc = await db.collection('Rooms').doc(roomCode).get();
+    return doc;
 }
 
 // returns a player with a given name - null if none exists
-function getPlayer(roomCode, name) { 
-    room = getRoom(roomCode);
-    room.collection('Players').get().then(snapshot => {
-        snapshot.docs.forEach(doc => {
-            if(doc.id == name) {
-                return doc;
-            }
-        });
-    });
-    return null;
+async function getPlayer(roomCode, name) { 
+    const room = await getRoom(roomCode);
+    const player = await room.collection('Players').doc(name).get();
+    return player;
 }
 
 // getter for isOpen
-function getIsOpen(roomCode) {
-    db.collection('Rooms').doc(roomCode).get().then(doc => {
-        return doc.data().numPlayers;
-    });
+async function getIsOpen(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().isOpen;
 }
 
 // setter for isOpen
@@ -145,21 +141,17 @@ function setIsOpen(roomCode, value) {
 }
 
 // getter for numPlayers
-function getNumPlayers(roomCode) {
-    numPlayers = 0;
-    db.collection('Rooms').doc(roomCode).get().then(doc => {
-        console.log(doc.data().numPlayers);
-        numPlayers = doc.data().numPlayers;
-        return numPlayers;
-    });
-    
+async function getNumPlayers(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().numPlayers;
 }
 
 // no setter for numPlayers - determined at start of the game
 
 // getter for round
-function getRound(roomCode) {
-    return getRoom(roomCode).data().round;
+async function getRound(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().round;
 }
 
 // reset round number to zero
@@ -170,15 +162,16 @@ function resetRound(roomCode) {
 }
 
 // increment round by one
-function incrementRound(roomCode) {
+async function incrementRound(roomCode) {
     db.collection("Rooms").doc(roomCode).update({
-        round: (getRound(roomCode) + 1)
+        round: (await getRound(roomCode) + 1)
     });
 }
 
 // getter for downvoteCounter
-function getDownvoteCounter(roomCode) {
-    return getRoom(roomCode).data().downvoteCounter;
+async function getDownvoteCounter(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().downvoteCounter;
 }
 
 // reset downvoteCounter to zero
@@ -189,15 +182,16 @@ function resetDownvoteCounter(roomCode) {
 }
 
 // increment downvoteCounter by one
-function incrementDownvoteCounter(roomCode) {
+async function incrementDownvoteCounter(roomCode) {
     db.collection("Rooms").doc(roomCode).update({
-        downvoteCounter: (getDownvoteCounter(roomCode) + 1)
+        downvoteCounter: (await getDownvoteCounter(roomCode) + 1)
     });
 }
 
 // getter for resistanceScore
-function getResistanceScore(roomCode) {
-    return getRoom(roomCode).data().resistanceScore;
+async function getResistanceScore(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().resistanceScore;
 }
 
 // reset resistanceScore to zero
@@ -215,8 +209,9 @@ function incrementResistanceScore(roomCode) {
 }
 
 // getter for spyScore
-function getSpyScore(roomCode) {
-    return getRoom(roomCode).data().spyScore;
+async function getSpyScore(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().spyScore;
 }
 
 // reset spyScore to zero
@@ -227,15 +222,16 @@ function resetSpyScore(roomCode) {
 }
 
 // increment spyScore by one
-function incrementSpyScore(roomCode) {
+async function incrementSpyScore(roomCode) {
     db.collection("Rooms").doc(roomCode).update({
-        spyScore: (getSpyScore(roomCode) + 1)
+        spyScore: (await getSpyScore(roomCode) + 1)
     });
 }
 
 // getter for missionLeaderNum
-function getMissionLeaderNum(roomCode) {
-    return getRoom(roomCode).data().missionLeaderNum;
+async function getMissionLeaderNum(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().missionLeaderNum;
 }
 
 // setter for missionLeaderNum
@@ -246,15 +242,17 @@ function setMissionLeaderNum(roomCode, value) {
 }
 
 // getter for rotNumber
-function getRotNumber(roomCode, name) {
-    return getPlayer(roomCode, name).data().rotNumber;
+async function getRotNumber(roomCode, name) {
+    const doc = await getRoom(roomCode);
+    return doc.data().rotNumber;
 }
 
 // no rotNumber setter
 
 // getter for hasVoted
-function getHasVoted(roomCode, name) {
-    return getPlayer(roomCode, name).data().hasVoted;
+async function getHasVoted(roomCode, name) {
+    const doc = await getRoom(roomCode);
+    return doc.data().hasVoted;
 }
 
 // setter for hasVoted
@@ -265,8 +263,9 @@ function setHasVoted(roomCode, name, value) {
 }
 
 // getter for isMissionMember
-function getIsMissionMember(roomCode, name) {
-    return getPlayer(roomCode, name).data().isMissionMember;
+async function getIsMissionMember(roomCode, name) {
+    const player = await getPlayer(roomCode, name);
+    return player.data().isMissionMember;
 }
 
 // setter for isMissionMember
@@ -277,8 +276,9 @@ function setIsMissionMember(roomCode, name, value) {
 }
 
 // getter for isResistance
-function getIsResistance(roomCode, name) {
-    return getPlayer(roomCode, name).data().isResistance;
+async function getIsResistance(roomCode, name) {
+    const player = await getPlayer(roomCode, name);
+    return player.data().isResistance;
 }
 
 // setter for isResistance
@@ -290,7 +290,8 @@ function setIsResistance(roomCode, name, value) {
 
 // getter for vote
 function getVote(roomCode, name) {
-    return getPlayer(roomCode, name).data().vote;
+    const player = await getPlayer(roomCode, name);
+    return player.data().vote;
 }
 
 // setter for vote
@@ -310,8 +311,8 @@ function startGame(roomCode) {
 
 // incremements the mission leader number
 function newLeader(roomCode) {
-    let ml_Num = getMissionLeaderNum(roomCode) + 1;
-    if(ml_Num >= getNumPlayers(roomCode)) {
+    let ml_Num = await getMissionLeaderNum(roomCode) + 1;
+    if(ml_Num >= await getNumPlayers(roomCode)) {
         ml_Num = 0;
     }
     setMissionLeaderNum(roomCode, ml_Num);
@@ -333,7 +334,8 @@ function castVote(roomCode, name, value) {
 
 // reset all votes, hasVoted
 function clearVotes(roomCode) {
-    getRoom(roomCode).collection('Players').get().then(snapshot => {
+    const doc = await getRoom(roomCode);
+    doc.collection('Players').get().then(snapshot => {
         snapshot.docs.forEach(doc => {
             let name = doc.id;
             setHasVoted(roomCode, name, false);
