@@ -65,37 +65,46 @@ joinForm.addEventListener('submit', (e) => {
 
 // helpter method for join room
 async function joinHelp(roomCode, name) {
-    const numPlayers = await getNumPlayers(roomCode);
-    console.log(roomCode);
-    console.log(name);
-    if (roomCode != '' && name != '' && numPlayers < 10) {
-        let room = null;
-        db.collection('Rooms').get().then(snapshot => {
-            snapshot.docs.forEach(doc => {
-                if(doc.id == roomCode) {
-                    room = doc;
+    if (roomCode != '' && name != '') {
+        const open = await getIsOpen(roomCode);
+        const numPlayers = await getNumPlayers(roomCode);
+        if (roomCode != '' && name != '' && open && numPlayers < 10) {
+            let room = null;
+            db.collection('Rooms').get().then(snapshot => {
+                snapshot.docs.forEach(doc => {
+                    if(doc.id == roomCode) {
+                        room = doc;
+                    }
+                });
+            
+                if(room == null) {
+                    console.log("Invalid Room Code");
+                }
+                else {
+                    db.collection("Rooms").doc(roomCode).update({
+                        numPlayers: (room.data().numPlayers + 1),
+                    });
+                    db.collection('Rooms').doc(roomCode).collection("Players").doc(name).set({
+                        rotNumber: (room.data().numPlayers),
+                        hasVoted: false,
+                        isMissionMember: false,
+                        isResistance: true,
+                        vote: true
+                    });
                 }
             });
-        
-            if(room == null) {
-                console.log("Invalid Room Code");
+        } 
+        else {
+            if (numPlayers == 10) {
+                console.log("Too many players!");
             }
-            else {
-                db.collection("Rooms").doc(roomCode).update({
-                    numPlayers: (room.data().numPlayers + 1),
-                });
-                db.collection('Rooms').doc(roomCode).collection("Players").doc(name).set({
-                    rotNumber: (room.data().numPlayers),
-                    hasVoted: false,
-                    isMissionMember: false,
-                    isResistance: true,
-                    vote: true
-                });
+            else if (!open) {
+                console.log("The game already started!");
             }
-        });
-    } 
+        } 
+    }
     else {
-        console.log("Too many players!");
+        console.log("Must enter a valid username and room code!");
     }
 }
 
