@@ -56,9 +56,19 @@ createForm.addEventListener('submit', (e) => {
 // joing a room
 joinForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    let name = joinForm.name.value;
-    let roomCode = joinForm.code.value;
-    if (roomCode != '' && name != '') {
+    const name = joinForm.name.value;
+    const roomCode = joinForm.code.value;
+    joinHelp(roomCode, name);
+    joinForm.name.value = '';
+    joinForm.code.value = '';
+});
+
+// helpter method for join room
+async function joinHelp(roomCode, name) {
+    const numPlayers = await getNumPlayers(roomCode);
+    console.log(roomCode);
+    console.log(name);
+    if (roomCode != '' && name != '' && numPlayers < 10) {
         let room = null;
         db.collection('Rooms').get().then(snapshot => {
             snapshot.docs.forEach(doc => {
@@ -74,19 +84,20 @@ joinForm.addEventListener('submit', (e) => {
                 db.collection("Rooms").doc(roomCode).update({
                     numPlayers: (room.data().numPlayers + 1),
                 });
-                db.collection('Rooms').doc(roomCode).collection("Players").doc(joinForm.name.value).set({
+                db.collection('Rooms').doc(roomCode).collection("Players").doc(name).set({
                     rotNumber: (room.data().numPlayers),
                     hasVoted: false,
                     isMissionMember: false,
                     isResistance: true,
                     vote: true
                 });
-                joinForm.name.value = '';
-                joinForm.code.value = '';
             }
         });
+    } 
+    else {
+        console.log("Too many players!");
     }
-});
+}
 
 // starting a game
 startForm.addEventListener('submit', (e) => {
@@ -97,11 +108,6 @@ startForm.addEventListener('submit', (e) => {
 
 // helper function for starting a game
 async function startHelp(roomCode) {
-    // TESTING
-    const test = await getVote(roomCode, "Sean");
-    console.log("TEST RESULT: " + test);
-
-    
     const numPlayers = await getNumPlayers(roomCode);
     if (numPlayers >= 5 && numPlayers <= 10) {
         startGame(roomCode);
