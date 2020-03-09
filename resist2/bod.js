@@ -1,9 +1,11 @@
-
+// Initial definitions and fetches
 const roomList = document.querySelector('#room-list');
 const createForm = document.querySelector('#create-game-form');
 const joinForm = document.querySelector('#join-game-form');
 
-// creating a room
+// -------------------------------------------------------------------------------
+// Listener to adding a room --- NEEDS BETTER STYLE
+// -------------------------------------------------------------------------------
 createForm.addEventListener('submit', (e) => {
     e.preventDefault();
     console.log(createForm.name.value);
@@ -33,7 +35,9 @@ createForm.addEventListener('submit', (e) => {
     }
 });
 
-// Helper to join a room
+// -------------------------------------------------------------------------------
+// Listener to joining a room
+// -------------------------------------------------------------------------------
 joinForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = joinForm.name.value;
@@ -43,7 +47,16 @@ joinForm.addEventListener('submit', (e) => {
     joinForm.code.value = '';
 });
 
-// helper method for join room
+
+// ///////////////////////////////////////////////////////////////////////////////
+//                                                                              //
+// Helper functions                                                             //
+//                                                                              //
+// ///////////////////////////////////////////////////////////////////////////////
+
+// -------------------------------------------------------------------------------
+// Helper function for join room --- NEEDS BETTER STYLE
+// -------------------------------------------------------------------------------
 async function joinHelp(roomCode, name) {
     if (roomCode != '' && name != '') {
         const open = await getIsOpen(roomCode);
@@ -95,26 +108,32 @@ async function joinHelp(roomCode, name) {
 }
 
 
-
+// -------------------------------------------------------------------------------
 // returns the desired room - useful for getting data from the room
+// -------------------------------------------------------------------------------
 async function getRoom(roomCode) {
     const doc = await db.collection('Rooms').doc(roomCode).get();
     return doc;
 }
 
-
+// -------------------------------------------------------------------------------
 // getter for isOpen
+// -------------------------------------------------------------------------------
 async function getIsOpen(roomCode) {
     const doc = await getRoom(roomCode);
     return doc.data().isOpen;
 }
 
+// -------------------------------------------------------------------------------
 // getter for numPlayers
+// -------------------------------------------------------------------------------
 async function getNumPlayers(roomCode) {
     const doc = await getRoom(roomCode);
     return doc.data().numPlayers;
 }
-
+// -------------------------------------------------------------------------------
+// Random id generator
+// -------------------------------------------------------------------------------
 function idGen (){
     const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let id =""
