@@ -1,3 +1,4 @@
+// Initial definitions and fetches
 const roomId = sessionStorage.getItem('roomID')
 const isHost = sessionStorage.getItem('isHost')
 const playerName =sessionStorage.getItem('playerName')
@@ -14,7 +15,6 @@ document.getElementById('roomID').innerHTML =
 document.getElementById('hostName').innerHTML = 
                 'Your Name: '+ playerName 
 
-                
 // -------------------------------------------------------------------------------
 // Listener for any change on the database (adding players)
 // IDK if this function could be turned into a helper and placed into the function below
@@ -28,7 +28,7 @@ playersRef.onSnapshot((snapshot) =>{
 });
 
 // -------------------------------------------------------------------------------
-// Function that checks if the room is still open or not
+// Listener to  checks if the room is still open or not
 // If the room is not open, this means you should be redirected to the game page
 // -------------------------------------------------------------------------------
 roomRef.onSnapshot((snapshot) =>{
@@ -41,34 +41,25 @@ roomRef.onSnapshot((snapshot) =>{
 // Function for starting the game
 // -------------------------------------------------------------------------------
 startButton.addEventListener('click', () => {
-    // This check might seem dumb but HTML and JavaScript were acting up alll weird
     if (isHost == "yes") startHelp(roomId)
     else alert("You're not the host!")
 });
 
-// helper function for starting a game
-async function startHelp(roomCode) {
-    const numPlayers = await getNumPlayers(roomCode);
-    // TEMPORARY CONDITION FOR TESTING, NUMBER OF PLAYERS SHOULD BE 5
-    if (numPlayers >= 2 && numPlayers <= 10) {
-        await roomRef.update({isOpen: false});
-        location = "game.html"
-    }
-    else {
-        alert("Error: Wrong number of players. Must have between 5 and 10 players.");
-    }
-}
 
+// ///////////////////////////////////////////////////////////////////////////////
+//                                                                              //
+// Helper functions                                                             //
+//                                                                              //
+// ///////////////////////////////////////////////////////////////////////////////
 
-
-
-
-
-// Helper function that updates the player list
+// -------------------------------------------------------------------------------
+// Helper function that updates the player list in the document
+// -------------------------------------------------------------------------------
 function updatePlayers(names){ 
     const playerList = document.getElementById('playerList')
+    // cleans existing list
     clean(playerList);
-    names.forEach((name) =>{
+    names.forEach((name) =>{ // Create the children elements to the list
         var entry = document.createElement("LI");
         var text = document.createTextNode(name);
         entry.appendChild(text);
@@ -77,21 +68,43 @@ function updatePlayers(names){
 
 }
 
+// -------------------------------------------------------------------------------
 // Helper function to clean elements
+// -------------------------------------------------------------------------------
 function clean(node){
     while (node.firstChild) {
         node.removeChild(node.lastChild);
      }
 }
 
+// -------------------------------------------------------------------------------
 // getter for numPlayers
+// -------------------------------------------------------------------------------
 async function getNumPlayers(roomCode) {
     const doc = await getRoom(roomCode);
     return doc.data().numPlayers;
 }
 
+// -------------------------------------------------------------------------------
 // returns the desired room - useful for getting data from the room
+// -------------------------------------------------------------------------------
 async function getRoom(roomCode) {
     const doc = await db.collection('Rooms').doc(roomCode).get();
     return doc;
+}
+
+// -------------------------------------------------------------------------------
+// Helper function for starting a game
+// -------------------------------------------------------------------------------
+async function startHelp(roomCode) {
+    const numPlayers = await getNumPlayers(roomCode);
+    // TEMPORARY CONDITION FOR TESTING, MIN # OF PLAYERS SHOULD BE 5
+    // Check if valid number of players is in match, else alert the host
+    if (numPlayers >= 2 && numPlayers <= 10) {
+        await roomRef.update({isOpen: false});
+        location = "game.html"
+    }
+    else {
+        alert("Error: Wrong number of players. Must have between 5 and 10 players.");
+    }
 }
