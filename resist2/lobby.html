@@ -51,7 +51,6 @@
       // Initialize Firebase
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
-      //db.settings({ timestampsInSnapshots: true });
       firebase.analytics();
     </script>
 
@@ -65,10 +64,17 @@
     <header className="landing-header">
         <h1><a href="index.html">Secret Sagehen Resistance!</a></h1>
     </header>
-    <div class="roomInfo">
+    <div class="content">
         <p id="roomID">Room id</p>
         <p id="hostName">Host name </p>
     </div>
+    <div class="content players">
+      <p>Your players are:</p>
+      <ul id="playerList">
+      </ul>
+      <button id="start">Start Game</button>
+    </div>
+
     <script src="lobby.js"></script>
     
   </body>
