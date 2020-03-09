@@ -1,26 +1,7 @@
+
 const roomList = document.querySelector('#room-list');
 const createForm = document.querySelector('#create-game-form');
 const joinForm = document.querySelector('#join-game-form');
-
-// create element & render cafe
-function renderRoom(doc){
-    let li = document.createElement('li');
-    let roomCode = document.createElement('span');
-
-    li.setAttribute('data-id', doc.id);
-    roomCode.textContent = doc.id;
-
-    li.appendChild(roomCode);
-
-    roomList.appendChild(li);
-}
-
-// getting data
-db.collection('Rooms').get().then(snapshot => {
-    snapshot.docs.forEach(doc => {
-        renderRoom(doc);
-    });
-});
 
 // creating a room
 createForm.addEventListener('submit', (e) => {
@@ -37,7 +18,7 @@ createForm.addEventListener('submit', (e) => {
             downvoteCounter: 0,
             resistanceScore: 0,
             spyScore: 0
-        });
+        }).then(function() {
         db.collection('Rooms').doc(code).collection("Players").add({
             name: createForm.name.value,
             rotNumber: 0,
@@ -45,9 +26,9 @@ createForm.addEventListener('submit', (e) => {
             isMissionMember: false,
             isResistance: true,
             vote: true
-        });
-        createForm.name.value = '';
-        location = 'lobby.html'; 
+        }).then(function() {
+            location ="lobby.html";
+        })});
     }
 });
 
