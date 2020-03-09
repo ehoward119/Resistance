@@ -28,6 +28,8 @@ createForm.addEventListener('submit', (e) => {
     console.log(createForm.name.value);
     if (createForm.name.value != '') {
         code = idGen()
+        sessionStorage.setItem('roomID', code)
+        sessionStorage.setItem('hostName', createForm.name.value)
         db.collection('Rooms').doc(code).set({
             isOpen: true,
             numPlayers: 1,
@@ -45,6 +47,7 @@ createForm.addEventListener('submit', (e) => {
             vote: true
         });
         createForm.name.value = '';
+        location = 'lobby.html'; 
     }
 });
 

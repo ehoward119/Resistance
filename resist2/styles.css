@@ -29,6 +29,12 @@ header {
 
 a {
   text-decoration: none;
+  color: white;
+}
+
+a:visited{
+  text-decoration: none;
+  color: white;
 }
 
 h1 {
@@ -61,6 +67,10 @@ button{
   transition: all 0.2s;
 }
 
-a {
-  text-decoration: none;
+.roomInfo{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: black;
 }

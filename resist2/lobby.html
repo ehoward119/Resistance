@@ -62,21 +62,14 @@
     <!-- END TESTING AREA -->
     
     <!-- Div that is rendered by React-->
-      <header className="landing-header">
-          <h1><a href="index.html">Secret Sagehen Resistance!</a></h1>
-      </header>
-    <div class="content">
-      <form id = "create-game-form">
-          <input type="text" name="name" placeholder="Name"/>
-          <button>Create Room</button>
-      </form>
-      <form id = "join-game-form">
-          <input type="text" name="name" placeholder="Name"/>
-          <input type="text" name="code" placeholder="Room Code"/>
-          <button>Join Game</button>
-      </form>
+    <header className="landing-header">
+        <h1><a href="index.html">Secret Sagehen Resistance!</a></h1>
+    </header>
+    <div class="roomInfo">
+        <p id="roomID">Room id</p>
+        <p id="hostName">Host name </p>
     </div>
-    <script src="bod.js"></script>
+    <script src="lobby.js"></script>
     
   </body>
 </html>
