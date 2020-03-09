@@ -32,8 +32,10 @@ playersRef.onSnapshot((snapshot) =>{
 // If the room is not open, this means you should be redirected to the game page
 // -------------------------------------------------------------------------------
 roomRef.onSnapshot((snapshot) =>{
-    if (!snapshot.data().isOpen) {
-        location = "game.html"
+    if (isHost != "yes"){       // HACK: Dealing with asynchronous update
+        if (!snapshot.data().isOpen) {
+            location = "game.html"
+        }
     }
 });
 
@@ -101,8 +103,11 @@ async function startHelp(roomCode) {
     // TEMPORARY CONDITION FOR TESTING, MIN # OF PLAYERS SHOULD BE 5
     // Check if valid number of players is in match, else alert the host
     if (numPlayers >= 2 && numPlayers <= 10) {
-        await roomRef.update({isOpen: false});
-        location = "game.html"
+        roomRef.update({
+            isOpen: false
+        }).then( () => {
+            location = "game.html"
+        });
     }
     else {
         alert("Error: Wrong number of players. Must have between 5 and 10 players.");
