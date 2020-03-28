@@ -6,6 +6,7 @@ body {
    background-color: #c7c7c7;;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-y: scroll;
 }
 
 code {
@@ -37,9 +38,6 @@ a:visited{
   color: white;
 }
 
-h1 {
-  color: white;
-}
 
 /* Body CSS */ 
 .content {
@@ -75,4 +73,24 @@ button{
   justify-content: center;
   align-items: center;
   color: black;
+}
+
+br {
+  line-height: 150%;
+}
+
+.instructions{
+  display: flex;
+}
+
+.column h3{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.column{
+  flex: 50% ;
+  border-style: solid;
+  border-color: black;
+  padding: 10px ;
 }
