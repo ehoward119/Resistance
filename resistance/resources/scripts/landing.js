@@ -25,6 +25,7 @@ createForm.addEventListener('submit', (e) => {
         db.collection('Rooms').doc(code).collection("Players").doc( createForm.name.value).set({
             rotNumber: 0,
             hasVoted: true,
+            isMissionLeader: false,
             isMissionMember: false,
             isResistance: true,
             vote: true
@@ -80,6 +81,7 @@ async function joinHelp(roomCode, name) {
                     db.collection('Rooms').doc(roomCode).collection("Players").doc(name).set({
                         rotNumber: (room.data().numPlayers),
                         hasVoted: false,
+                        isMissionLeader: false,
                         isMissionMember: false,
                         isResistance: true,
                         vote: true

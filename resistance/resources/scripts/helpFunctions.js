@@ -119,19 +119,6 @@ async function incrementSpyScore(roomCode) {
     });
 }
 
-// getter for missionLeaderNum
-async function getMissionLeaderNum(roomCode) {
-    const doc = await getRoom(roomCode);
-    return doc.data().missionLeaderNum;
-}
-
-// setter for missionLeaderNum
-function setMissionLeaderNum(roomCode, value) {
-    db.collection("Rooms").doc(roomCode).update({
-        missionLeaderNum: value
-    });
-}
-
 // getter for rotNumber
 async function getRotNumber(roomCode, name) {
     const player = await getPlayer(roomCode, name);
@@ -163,6 +150,19 @@ async function getIsMissionMember(roomCode, name) {
 function setIsMissionMember(roomCode, name, value) {
     db.collection("Rooms").doc(roomCode).collection('Players').doc(name).update({
         isMissionMember: value
+    });
+}
+
+// getter for isMissionLeader
+async function getIsMissionLeader(roomCode, name) {
+    const player = await getPlayer(roomCode, name);
+    return player.data().isMissionLeader;
+}
+
+// setter for isMissionLeader
+function setIsMissionLeader(roomCode, name, value) {
+    db.collection("Rooms").doc(roomCode).collection('Players').doc(name).update({
+        isMissionLeader: value
     });
 }
 
@@ -200,18 +200,8 @@ function startGame(roomCode) {
     setIsOpen(roomCode, false);
 }
 
-// incremements the mission leader number
-async function newLeader(roomCode) {
-    let ml_Num = await getMissionLeaderNum(roomCode) + 1;
-    if(ml_Num >= await getNumPlayers(roomCode)) {
-        ml_Num = 0;
-    }
-    setMissionLeaderNum(roomCode, ml_Num);
-}
-
 // incremements the round, reseting all applicable variables
 function newRound(roomCode){
-    newLeader(roomCode);
     resetDownvoteCounter(roomCode);
     clearVotes(roomCode);
     incrementRound(roomCode);

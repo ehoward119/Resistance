@@ -11,9 +11,12 @@ const startButton = document.getElementById('start')
 // Can be deleted if you want, but its useful for debugging
 // -------------------------------------------------------------------------------
 document.getElementById('roomID').innerHTML =
-                'Your Room ID: '+roomId
+                'Your Room ID: ' + roomId;
 document.getElementById('hostName').innerHTML = 
-                'Your Name: '+ playerName 
+                'Your Name: '+ playerName;
+
+// test for sean and peace of mind
+console.log("Host: " + isHost);
 
 // -------------------------------------------------------------------------------
 // Listener for any change on the database (adding players)
@@ -102,7 +105,7 @@ async function startHelp(roomCode) {
     const numPlayers = await getNumPlayers(roomCode);
     // TEMPORARY CONDITION FOR TESTING, MIN # OF PLAYERS SHOULD BE 5
     // Check if valid number of players is in match, else alert the host
-    if (numPlayers >= 2 && numPlayers <= 10) {
+    if (numPlayers >= 3 && numPlayers <= 10) {
         roomRef.update({
             isOpen: false
         }).then( () => {
