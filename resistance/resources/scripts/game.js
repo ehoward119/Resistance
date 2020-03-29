@@ -39,10 +39,11 @@ async function runGame() {
     await resetRound(roomId);
     await resetResistanceScore(roomId);
     await resetSpyScore(roomId);
+    await resetDownvoteCounter(roomId)
     let missionLeaderIndex = 0;
     let resistanceScore = await getResistanceScore(roomId);
     let spyScore = await getSpyScore(roomId);
-    let downvoteCounter = 0;
+    let downvoteCounter = await getDownvoteCounter(roomId);
 
     // each full iteratation is one round
     while (resistanceScore < 3 && spyScore < 3 && downvoteCounter < 5) {
