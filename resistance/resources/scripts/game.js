@@ -5,7 +5,8 @@ const playerName =sessionStorage.getItem('playerName')
 const playersRef = db.collection('Rooms').doc(roomId).collection('Players')
 const roomRef =  db.collection('Rooms').doc(roomId)
 const identityButton = document.getElementById('identity')
-//const roleButton = document.getElementById('randomize')
+const yesButton = document.getElementById('yes')
+const noButton = document.getElementById('no')
 
 // -------------------------------------------------------------------------------
 // Running the game
@@ -14,12 +15,29 @@ const identityButton = document.getElementById('identity')
 console.log("Host: " + isHost);
 if (isHost == "yes") {
     runGame();
+} else {
+    
+    // vote yes button
+    yesButton.addEventListener('click', () => {
+        setVote(roomId, playerName, true);
+        setHasVoted(roomId, playerName, true);
+        console.log("YES!");
+    });
+
+    // vote no button
+    noButton.addEventListener('click', () => {
+        setVote(roomId, playerName, false);
+        setHasVoted(roomId, playerName, true);
+        console.log("NO!");
+    });
 }
+
 
 // get identity button
 identityButton.addEventListener('click', () => {
     getSecretIDHelp()
 });
+
 
 // -------------------------------------------------------------------------------
 // Helper Functions for running the game
@@ -27,6 +45,11 @@ identityButton.addEventListener('click', () => {
 
 async function runGame() {
     
+    // get identity button
+    identityButton.addEventListener('click', () => {
+        getSecretIDHelp()
+    });
+
     // ******** Night Time ********
     let order = [];
     numMissionMembers = await nightTime(order);
@@ -64,9 +87,61 @@ async function runGame() {
 
         // Vote on the mission  members-> restart round with next leader if vote 
         // fails, and increment the downvote counter
-        //------
-        // TODO
-        //------
+        
+        let waitingForVotes = true;
+
+        // vote yes button
+        yesButton.addEventListener('click', () => {
+            setVote(roomId, playerName, true);
+            setHasVoted(roomId, playerName, true);
+            console.log("YES!");
+        });
+
+        // vote no button
+        noButton.addEventListener('click', () => {
+            setVote(roomId, playerName, false);
+            setHasVoted(roomId, playerName, true);
+            console.log("NO!");
+        });
+        
+        //console.log("arrived at while loop")
+        // wait for everyone to vote
+        while (waitingForVotes) {
+            //console.log("inside loop")
+            waitingForVotes = false;
+            await playersRef.get().then(snapshot => {
+                snapshot.docs.forEach(doc => {
+                    let playerHasVoted = doc.data().hasVoted;
+                    if (!playerHasVoted) {
+                        waitingForVotes = true;
+                    }
+                });
+            });
+        }
+        
+        // record everyone's vote
+        let numYes = 0;
+        let numNo = 0;
+        await playersRef.get().then(snapshot => {
+            snapshot.docs.forEach(doc => {
+                let name = doc.id;
+                let playerVote = doc.data().vote;
+                if (playerVote) {
+                    numYes++;
+                } 
+                else {
+                    numNo++;
+                }
+            });
+        });
+        await clearVotes(roomId);
+
+        let action = "fail";
+        if (numYes > numNo) {
+            action = "pass";
+        }
+
+        
         
         // Mission Members vote on the Mission
         //------
@@ -77,7 +152,7 @@ async function runGame() {
         //------------------------------------------
         // NEEDS WORK - CURRENTLY RANDOM SIMULATION
         //------------------------------------------
-        let action = simulateRound();
+        //action = simulateRound();
         
         // Score is updated
         if (action == "pass") {
@@ -221,7 +296,7 @@ async function getSecretIDHelp() {
 }
 
 // incremements the round, reseting all applicable variables
-async function newRound(roomCode, leader){
+async function newRound(roomCode, leader) {
     await updateIsMissionLeader(roomCode, leader, true);
     await clearVotes(roomCode);
     await incrementRound(roomCode);
@@ -391,5 +466,42 @@ function setVote(roomCode, name, value) {
 function setIsMissionLeader(roomCode, name, value) {
     db.collection("Rooms").doc(roomCode).collection('Players').doc(name).update({
         isMissionLeader: value
+    });
+}
+
+// setter for hasVoted
+function setHasVoted(roomCode, name, value) {
+    db.collection("Rooms").doc(roomCode).collection('Players').doc(name).update({
+        hasVoted: value
+    });
+}
+
+// getter for hasVoted
+async function getHasVoted(roomCode, name) {
+    const player = await getPlayer(roomCode, name);
+    return player.data().hasVoted;
+}
+
+// setter for vote
+function setVote(roomCode, name, value) {
+    db.collection("Rooms").doc(roomCode).collection('Players').doc(name).update({
+        vote: value
+    });
+}
+
+// getter for vote
+async function getVote(roomCode, name) {
+    const player = await getPlayer(roomCode, name);
+    return player.data().vote;
+}
+
+// reset all votes, hasVoted
+async function clearVotes(roomCode) {
+    db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id;
+            setHasVoted(roomCode, name, false);
+            setVote(roomCode, name, false);
+        });
     });
 }
