@@ -16,7 +16,16 @@ console.log("Host: " + isHost);
 if (isHost == "yes") {
     runGame();
 } else {
-    
+    displayMissionMembers();
+    playersRef.onSnapshot((snapshot) =>{
+            let status = snapshot.doc(playerName).data().isMissionLeader;
+            if (status) {
+                document.getElementById('ML_status').innerHTML = "You are now the mission leader.";
+            } else {
+                document.getElementById('ML_status').innerHTML = "You are not the mission leader.";
+            }
+        });
+
     // vote yes button
     yesButton.addEventListener('click', () => {
         setVote(roomId, playerName, true);
@@ -44,7 +53,7 @@ identityButton.addEventListener('click', () => {
 // -------------------------------------------------------------------------------
 
 async function runGame() {
-    
+    displayMissionMembers();
     // get identity button
     identityButton.addEventListener('click', () => {
         getSecretIDHelp()
@@ -72,13 +81,20 @@ async function runGame() {
     while (resistanceScore < 3 && spyScore < 3 && downvoteCounter < 5) {
         
         // Initiate new round
-        await newRound(roomId, order[(await getRound(roomId)) - 1]);
+        await newRound(roomId, order[(await getRound(roomId))]);
         
         // test console logs
         console.log("Round: " + await getRound(roomId));
         console.log("The Mission Leader is " + order[missionLeaderIndex]);
         console.log("The number of mission members the mission is " 
             + numMissionMembers[resistanceScore + spyScore]);
+        
+        let status = await getIsMissionLeader(roomId, playerName);
+        if (status) {
+            document.getElementById('ML_status').innerHTML = "You are now the mission leader.";
+        } else {
+            document.getElementById('ML_status').innerHTML = "You are not the mission leader.";
+        }
 
         // Mission Leader picks team members
         //------
@@ -297,7 +313,7 @@ async function getSecretIDHelp() {
 
 // incremements the round, reseting all applicable variables
 async function newRound(roomCode, leader) {
-    await updateIsMissionLeader(roomCode, leader, true);
+    await updateIsMissionLeader(roomCode, leader);
     await clearVotes(roomCode);
     await incrementRound(roomCode);
 }
@@ -310,12 +326,11 @@ function resetDownvoteCounter(roomCode) {
 }
 
 // update for isMissionLeader
-async function updateIsMissionLeader(roomCode, leader, value) {
+async function updateIsMissionLeader(roomCode, leader) {
     db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
         snapshot.docs.forEach(doc => {
             let name = doc.id;
             if (name == leader) {
-                console.log()
                 setIsMissionLeader(roomCode, name, true);
             } 
             else {
@@ -349,6 +364,23 @@ async function incrementDownvoteCounter(roomCode) {
         downvoteCounter: (await getDownvoteCounter(roomCode) + 1)
     });
 }
+
+async function displayMissionMembers(){
+    await playersRef.get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id;
+            let li = document.createElement("li");
+            let t = document.createTextNode(name);
+            let checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = "pair";
+            li.appendChild(checkbox);
+            li.appendChild(t);
+            document.getElementById("mission-members").appendChild(li);
+        });
+    });
+}
+
 
 // -------------------------------------------------------------------------------
 // Getter and Setter Functions
@@ -504,4 +536,10 @@ async function clearVotes(roomCode) {
             setVote(roomCode, name, false);
         });
     });
+}
+
+// getter for isMissionLeader
+async function getIsMissionLeader(roomCode, name) {
+    const player = await getPlayer(roomCode, name);
+    return player.data().isMissionLeader;
 }

@@ -40,15 +40,21 @@
         <h1><a href="index.html">Secret Sagehen Resistance!</a></h1>
     </header>
     <h1>You made it to the game page</h1>
+    <div class="content">
+      <p id="ML_status">mission leader status</p>
+  </div>
     <div class="player data">
       <button id="identity">Get Secret Identity</button>
     </div>
-    <div class="vote interface">
-      <button id="yes">Yes</button>
-      <button id="no">No</button>
-    </div>
-
-    <script src="./resources/scripts/game.js"></script>
-    
+    <div class= "mission-selector">
+      <h1>Select Mission Members</h1>
+      <ul>
+        <li id="mission-members"></li>
+      </ul>
+      <button>Submit Selection</button>
+  <div class = "voting">
+    <button id="yes">Yes</button>
+    <button id="no">No</button>
+  </div>    <script src="./resources/scripts/game.js"></script>
   </body>
 </html>
