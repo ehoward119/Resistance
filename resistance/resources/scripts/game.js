@@ -2,11 +2,13 @@
 const roomId = sessionStorage.getItem('roomID')
 const isHost = sessionStorage.getItem('isHost')
 const playerName =sessionStorage.getItem('playerName')
+const numPlayers = sessionStorage.getItem('numPlayers')
 const playersRef = db.collection('Rooms').doc(roomId).collection('Players')
 const roomRef =  db.collection('Rooms').doc(roomId)
 const identityButton = document.getElementById('identity')
 const yesButton = document.getElementById('yes')
 const noButton = document.getElementById('no')
+const selectionButton = document.getElementById('submit-button')
 
 // -------------------------------------------------------------------------------
 // Running the game
@@ -86,7 +88,7 @@ async function runGame() {
         // test console logs
         console.log("Round: " + await getRound(roomId));
         console.log("The Mission Leader is " + order[missionLeaderIndex]);
-        console.log("The number of mission members the mission is " 
+        console.log("The number of mission members in this mission is " 
             + numMissionMembers[resistanceScore + spyScore]);
         
         let status = await getIsMissionLeader(roomId, playerName);
@@ -97,9 +99,8 @@ async function runGame() {
         }
 
         // Mission Leader picks team members
-        //------
-        // TODO
-        //------
+        selectMissionTeam(numMissionMembers[resistanceScore+spyScore]); 
+                //this assumes this is the right number of mission members
 
         // Vote on the mission  members-> restart round with next leader if vote 
         // fails, and increment the downvote counter
@@ -156,8 +157,6 @@ async function runGame() {
         if (numYes > numNo) {
             action = "pass";
         }
-
-        
         
         // Mission Members vote on the Mission
         //------
@@ -381,6 +380,29 @@ async function displayMissionMembers(){
     });
 }
 
+async function selectMissionTeam(numMissionMembers){
+    selectionButton.addEventListener('click', () => {
+        let count = 0; 
+        let list = document.getElementById("mission-members");
+        let members = list.getElementsByTagName("li");
+        for(var i=0; i<members.length; i++){
+            var checkbox = members[i].getElementsByTagName("input");
+            if(checkbox[0].checked){
+                count++;
+            }
+        }
+        console.log("Selected " + count + " members for this mission!");
+        if (count != numMissionMembers){
+            alert("Must have " + numMissionMembers + " members selected!");
+        }
+        //So far, function will register that boxes are checked and will error
+        // if player tries to submit w the wrong number of members
+        //TODO: Do something w this result! Return it? Put it somewhere? idk
+                        //iDea: when ++count, add name to a list. Then at the end, return this list
+            //  Limit to only allowing mission leader to do this
+            //  Limit the leader to only submit once? 
+    });
+}
 
 // -------------------------------------------------------------------------------
 // Getter and Setter Functions

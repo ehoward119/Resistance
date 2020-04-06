@@ -103,6 +103,7 @@ async function getRoom(roomCode) {
 // -------------------------------------------------------------------------------
 async function startHelp(roomCode) {
     const numPlayers = await getNumPlayers(roomCode);
+    sessionStorage.setItem("numPlayers", numPlayers);
     // TEMPORARY CONDITION FOR TESTING, MIN # OF PLAYERS SHOULD BE 5
     // Check if valid number of players is in match, else alert the host
     if (numPlayers >= 3 && numPlayers <= 10) {
