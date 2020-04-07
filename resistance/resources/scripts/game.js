@@ -17,27 +17,26 @@ if (isHost == "yes") {
     runGame();
 } else {
     displayMissionMembers();
+
     playersRef.onSnapshot((snapshot) =>{
-            let status = snapshot.doc(playerName).data().isMissionLeader;
-            if (status) {
-                document.getElementById('ML_status').innerHTML = "You are now the mission leader.";
-            } else {
-                document.getElementById('ML_status').innerHTML = "You are not the mission leader.";
+        snapshot.docs.forEach(doc => {
+            if (doc.id == playerName) {
+                let status = doc.data().isMissionLeader;
+                if (status) {
+                    document.getElementById('ML_status').innerHTML = "You are now the mission leader.";
+                } else {
+                    document.getElementById('ML_status').innerHTML = "You are not the mission leader.";
+                }
             }
         });
-
-    // vote yes button
-    yesButton.addEventListener('click', () => {
-        setVote(roomId, playerName, true);
-        setHasVoted(roomId, playerName, true);
-        console.log("YES!");
     });
 
-    // vote no button
-    noButton.addEventListener('click', () => {
-        setVote(roomId, playerName, false);
-        setHasVoted(roomId, playerName, true);
-        console.log("NO!");
+    roomRef.onSnapshot((snapshot) => {
+        if (snapshot.data().acceptingVotes) {
+            countVotes();
+        } else {
+            //do nothing
+        }
     });
 }
 
@@ -60,10 +59,13 @@ async function runGame() {
     });
 
     // ******** Night Time ********
+    
     let order = [];
     numMissionMembers = await nightTime(order);
     console.log("Order: " + order)
     
+
+
     // ******** Game Time ********
     
     // Initiate variables
@@ -100,47 +102,48 @@ async function runGame() {
         //------
         // TODO
         //------
+        // TEST: Sean and Emily and mission leaders
+        setIsMissionMember(roomId, "Sean", true);
+        setIsMissionMember(roomId, "Emily", true);
+        
 
-        // Vote on the mission  members-> restart round with next leader if vote 
+        // Vote on the mission members-> restart round with next leader if vote 
         // fails, and increment the downvote counter
-        
-        let waitingForVotes = true;
 
-        // vote yes button
-        yesButton.addEventListener('click', () => {
-            setVote(roomId, playerName, true);
-            setHasVoted(roomId, playerName, true);
-            console.log("YES!");
-        });
+        // open up voting 
+        setAcceptingVotes(roomId, true);
+        console.log("accepting votes: " + await getAcceptingVotes(roomId));
+        // DO NOT DELETE THIS LINE ^^^
+        // - we must wait until the db has updated before we count the votes
 
-        // vote no button
-        noButton.addEventListener('click', () => {
-            setVote(roomId, playerName, false);
-            setHasVoted(roomId, playerName, true);
-            console.log("NO!");
-        });
-        
-        //console.log("arrived at while loop")
+        // get votes
+        // count votes
+        await countVotes();
+
         // wait for everyone to vote
-        while (waitingForVotes) {
-            //console.log("inside loop")
-            waitingForVotes = false;
-            await playersRef.get().then(snapshot => {
+        let waiting = true;
+        while (waiting) {
+            console.log("waiting for votes");
+            sleep(5000);
+            waiting = false;
+            await playersRef.get().then(snapshot =>{
                 snapshot.docs.forEach(doc => {
-                    let playerHasVoted = doc.data().hasVoted;
-                    if (!playerHasVoted) {
-                        waitingForVotes = true;
+                    console.log(doc.id + ": " + doc.data().hasVoted);
+                    if (!doc.data().hasVoted) {
+                        waiting = true;
                     }
                 });
             });
         }
         
+        // close voting
+        setAcceptingVotes(roomId, false);
+
         // record everyone's vote
         let numYes = 0;
         let numNo = 0;
         await playersRef.get().then(snapshot => {
             snapshot.docs.forEach(doc => {
-                let name = doc.id;
                 let playerVote = doc.data().vote;
                 if (playerVote) {
                     numYes++;
@@ -152,22 +155,19 @@ async function runGame() {
         });
         await clearVotes(roomId);
 
-        let action = "fail";
+        // determine a result of the vote
+        let action = "downvote";
         if (numYes > numNo) {
             action = "pass";
         }
 
-        
-        
         // Mission Members vote on the Mission
         //------
         // TODO
         //------
 
         // Mission fails or succeeds
-        //------------------------------------------
-        // NEEDS WORK - CURRENTLY RANDOM SIMULATION
-        //------------------------------------------
+
         //action = simulateRound();
         
         // Score is updated
@@ -381,6 +381,26 @@ async function displayMissionMembers(){
     });
 }
 
+async function countVotes() {
+    if (confirm(("Do you approve of the mission? \n 'Cancel' for no, 'Ok' for yes"))) {
+        setVote(roomId, playerName, true);
+        setHasVoted(roomId, playerName, true);
+        console.log("Vote: Yes");
+    } else {
+        setVote(roomId, playerName, false);
+        setHasVoted(roomId, playerName, true);
+        console.log("Vote: No");
+    }
+}
+
+function sleep(milliseconds) {
+    const date = Date.now();
+    let currentDate = null;
+    do {
+        currentDate = Date.now();
+    } while (currentDate - date < milliseconds);
+}
+
 
 // -------------------------------------------------------------------------------
 // Getter and Setter Functions
@@ -458,6 +478,34 @@ async function resetSpyScore(roomCode) {
         spyScore: 0
     });
 }
+
+// getter for acceptingVotes
+async function getAcceptingVotes(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().acceptingVotes;
+}
+
+// setter for acceptingVotes
+async function setAcceptingVotes(roomCode, value) {
+    db.collection("Rooms").doc(roomCode).update({
+        acceptingVotes: value
+    });
+}
+
+// getter for isMissionMember
+async function getIsMissionMember(roomCode, name) {
+    const player = await getPlayer(roomCode, name);
+    return player.data().isMissionMember;
+}
+
+// setter for isMissionMember
+function setIsMissionMember(roomCode, name, value) {
+    db.collection("Rooms").doc(roomCode).collection('Players').doc(name).update({
+        isMissionMember: value
+    });
+}
+
+
 
 // PLAYER METHODS
 

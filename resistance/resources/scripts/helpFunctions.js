@@ -119,6 +119,26 @@ async function incrementSpyScore(roomCode) {
     });
 }
 
+// getter for acceptingVotes
+async function getAcceptingVotes(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().acceptingVotes;
+}
+
+// setter for acceptingVotes
+function setAcceptingVotes(roomCode, value) {
+    db.collection("Rooms").doc(roomCode).update({
+        acceptingVotes: value
+    });
+}
+
+
+
+
+
+
+// PLAYER FUNCTIONS
+
 // getter for rotNumber
 async function getRotNumber(roomCode, name) {
     const player = await getPlayer(roomCode, name);
