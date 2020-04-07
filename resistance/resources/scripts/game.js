@@ -98,12 +98,13 @@ async function runGame() {
         }
         let numMembers = numMissionMembers[resistanceScore+spyScore];
         displayMissionMembers(numMembers);
-
         // Mission Leader picks team members
         selectionButton.addEventListener('click', () => {
             selectionButton.disabled = true;  //restricts the user from pressing it more than once
             if(status){ //checks if mission leader
-                let missionTeam = selectMissionTeam(numMembers); 
+                let missionTeam = selectMissionTeam(numMembers);
+                console.log(missionTeam);
+                displaySelectedTeam(missionTeam);
                 //this assumes this is the right number of mission members
                 //Concern: If they don't select the right number, it will return nothing 
                 //--they could technically never submit again?
@@ -113,6 +114,7 @@ async function runGame() {
             
         });
 
+        
         //TODO: Write a display mission members function
                 //Should display the selected mission members after they are selected by leader
         // Vote on the mission  members-> restart round with next leader if vote 
@@ -399,7 +401,7 @@ async function displayMissionMembers(numMissionMembers){
 
 //Selects mission members from checkbox list and returns the list of members
 //if there are the correct number selected. 
-async function selectMissionTeam(numMissionMembers){
+function selectMissionTeam(numMissionMembers){
     let count = 0; 
     let list = document.getElementById("mission-members");
     let members = list.getElementsByTagName("li");
@@ -417,11 +419,22 @@ async function selectMissionTeam(numMissionMembers){
         alert("Must have " + numMissionMembers + " members selected!");
         selectionButton.disabled = false; //resets button to allow them to select again
         return; 
-    }else{
-        return selected; 
     }
+    return selected;
     //TODO:
         //  Call this not just in the host 
+}
+
+//Displays selected team above voting buttons
+function displaySelectedTeam(members){
+    var team = "";
+    for(var i=0; i<members.length; i++){
+        var member = members[i] + ", ";
+        console.log(member);
+        team = team.concat(member);
+        console.log(team);
+    }
+    document.getElementById("mission-team").innerHTML = "Mission Members: " + team;
 }
 
 
