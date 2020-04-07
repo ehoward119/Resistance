@@ -21,7 +21,8 @@ createForm.addEventListener('submit', (e) => {
             downvoteCounter: 0,
             resistanceScore: 0,
             spyScore: 0,
-            acceptingVotes: false
+            acceptingVotes: false,
+            missionTime: false
         }).then(() =>{
         db.collection('Rooms').doc(code).collection("Players").doc( createForm.name.value).set({
             rotNumber: 0,
@@ -138,9 +139,9 @@ async function getNumPlayers(roomCode) {
 // Random id generator
 // -------------------------------------------------------------------------------
 function idGen (){
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let id =""
-    for(let i = 0; i < 5; i += 1){
+    for(let i = 0; i < 4; i += 1){
         id += possible.charAt(Math.floor(Math.random() * possible.length));
     }
   return id;

@@ -18,6 +18,7 @@ if (isHost == "yes") {
 } else {
     displayMissionMembers();
 
+    // display whether or not the player is the mission leader
     playersRef.onSnapshot((snapshot) =>{
         snapshot.docs.forEach(doc => {
             if (doc.id == playerName) {
@@ -31,11 +32,14 @@ if (isHost == "yes") {
         });
     });
 
+    // handle voting / mission
     roomRef.onSnapshot((snapshot) => {
         if (snapshot.data().acceptingVotes) {
             countVotes();
+        } else if (snapshot.data().missionTime) {
+            countMission();
         } else {
-            //do nothing
+            // do nothing
         }
     });
 }
@@ -84,7 +88,6 @@ async function runGame() {
         
         // Initiate new round
         await newRound(roomId, order[(await getRound(roomId))]);
-        
         // test console logs
         console.log("Round: " + await getRound(roomId));
         console.log("The Mission Leader is " + order[missionLeaderIndex]);
@@ -110,66 +113,17 @@ async function runGame() {
         // Vote on the mission members-> restart round with next leader if vote 
         // fails, and increment the downvote counter
 
-        // open up voting 
-        setAcceptingVotes(roomId, true);
-        console.log("accepting votes: " + await getAcceptingVotes(roomId));
-        // DO NOT DELETE THIS LINE ^^^
-        // - we must wait until the db has updated before we count the votes
-
-        // get votes
-        // count votes
-        await countVotes();
-
-        // wait for everyone to vote
-        let waiting = true;
-        while (waiting) {
-            console.log("waiting for votes");
-            sleep(5000);
-            waiting = false;
-            await playersRef.get().then(snapshot =>{
-                snapshot.docs.forEach(doc => {
-                    console.log(doc.id + ": " + doc.data().hasVoted);
-                    if (!doc.data().hasVoted) {
-                        waiting = true;
-                    }
-                });
-            });
-        }
         
-        // close voting
-        setAcceptingVotes(roomId, false);
-
-        // record everyone's vote
-        let numYes = 0;
-        let numNo = 0;
-        await playersRef.get().then(snapshot => {
-            snapshot.docs.forEach(doc => {
-                let playerVote = doc.data().vote;
-                if (playerVote) {
-                    numYes++;
-                } 
-                else {
-                    numNo++;
-                }
-            });
-        });
-        await clearVotes(roomId);
-
-        // determine a result of the vote
-        let action = "downvote";
-        if (numYes > numNo) {
-            action = "pass";
+        let action = await vote();
+        
+        // Mission Members vote on the Mission if it passed
+        if (action == "pass") {
+            console.log("Vote Passed");
+            action = await runMission();
+        } else {
+            console.log("Downvote");
         }
 
-        // Mission Members vote on the Mission
-        //------
-        // TODO
-        //------
-
-        // Mission fails or succeeds
-
-        //action = simulateRound();
-        
         // Score is updated
         if (action == "pass") {
             console.log("Mission Succeeded!");
@@ -365,6 +319,7 @@ async function incrementDownvoteCounter(roomCode) {
     });
 }
 
+// display the players with check boxes for mission selections
 async function displayMissionMembers(){
     await playersRef.get().then(snapshot => {
         snapshot.docs.forEach(doc => {
@@ -381,6 +336,7 @@ async function displayMissionMembers(){
     });
 }
 
+// prompt the player to vote
 async function countVotes() {
     if (confirm(("Do you approve of the mission? \n 'Cancel' for no, 'Ok' for yes"))) {
         setVote(roomId, playerName, true);
@@ -393,6 +349,133 @@ async function countVotes() {
     }
 }
 
+// tallies the votes and returns a result - pass or downvote
+async function vote() {
+    // open up voting 
+    setAcceptingVotes(roomId, true);
+    console.log("accepting votes: " + await getAcceptingVotes(roomId));
+    // DO NOT DELETE THIS LINE ^^^
+    // - we must wait until the db has updated before we count the votes
+
+    // get votes
+    // count votes
+    await countVotes();
+
+    // wait for everyone to vote
+    let waiting = true;
+    while (waiting) {
+        console.log("waiting for votes");
+        sleep(5000);
+        waiting = false;
+        await playersRef.get().then(snapshot =>{
+            snapshot.docs.forEach(doc => {
+                if (!doc.data().hasVoted) {
+                    waiting = true;
+                }
+            });
+        });
+    }
+    
+    // close voting
+    setAcceptingVotes(roomId, false);
+
+    // record everyone's vote
+    let numYes = 0;
+    let numNo = 0;
+    await playersRef.get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let playerVote = doc.data().vote;
+            if (playerVote) {
+                numYes++;
+            } 
+            else {
+                numNo++;
+            }
+        });
+    });
+    await clearVotes(roomId);
+
+    // determine a result of the vote
+    let action = "downvote";
+    if (numYes > numNo) {
+        action = "pass";
+    }
+
+    return action;
+}
+
+// prompt the player to play a mission
+async function countMission() {
+    const isMissionMember = await getIsMissionMember(roomId, playerName);
+    if (isMissionMember) {
+        if (confirm(("Pass or fail this mission? \n 'Cancel' for no, 'Ok' for yes"))) {
+            setVote(roomId, playerName, true);
+            setHasVoted(roomId, playerName, true);
+            console.log("Vote: Yes");
+        } else {
+            setVote(roomId, playerName, false);
+            setHasVoted(roomId, playerName, true);
+            console.log("Vote: No");
+        }
+    }
+}
+
+// tallies the mission votes and returns a result - pass or fail
+async function runMission() {
+    
+    // open up voting
+    setMissionTime(roomId, true);
+    console.log("mission time: " + await getMissionTime(roomId));
+    // DO NOT DELETE THIS LINE ^^^
+    // - we must wait until the db has updated before we count the votes
+
+    // count votes
+    await countMission();
+
+    // wait for everyone to vote
+    let waiting = true;
+    while (waiting) {
+        console.log("waiting for mission votes");
+        sleep(5000);
+        waiting = false;
+        await playersRef.get().then(snapshot =>{
+            snapshot.docs.forEach(doc => {
+                if (!doc.data().hasVoted && doc.data().isMissionMember) {
+                    waiting = true;
+                }
+            });
+        });
+    }
+    
+    // close voting
+    setMissionTime(roomId, false);
+
+    // record everyone's vote
+    let numYes = 0;
+    let numNo = 0;
+    await playersRef.get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let playerVote = doc.data().vote;
+            if (playerVote && doc.data().isMissionMember) {
+                numYes++;
+            } 
+            else if (doc.data().isMissionMember){
+                numNo++;
+            }
+        });
+    });
+    await clearVotes(roomId);
+
+    // determine a result of the vote
+    let action = "fail";
+    if (numYes > numNo) {
+        action = "pass";
+    }
+
+    return action;
+}
+
+// halts the execution of the script for the given amount of milliseconds
 function sleep(milliseconds) {
     const date = Date.now();
     let currentDate = null;
@@ -492,16 +575,16 @@ async function setAcceptingVotes(roomCode, value) {
     });
 }
 
-// getter for isMissionMember
-async function getIsMissionMember(roomCode, name) {
-    const player = await getPlayer(roomCode, name);
-    return player.data().isMissionMember;
+// getter for missionTime
+async function getMissionTime(roomCode) {
+    const doc = await getRoom(roomCode);
+    return doc.data().missionTime;
 }
 
-// setter for isMissionMember
-function setIsMissionMember(roomCode, name, value) {
-    db.collection("Rooms").doc(roomCode).collection('Players').doc(name).update({
-        isMissionMember: value
+// setter for missionTime
+function setMissionTime(roomCode, value) {
+    db.collection("Rooms").doc(roomCode).update({
+        missionTime: value
     });
 }
 
@@ -590,4 +673,17 @@ async function clearVotes(roomCode) {
 async function getIsMissionLeader(roomCode, name) {
     const player = await getPlayer(roomCode, name);
     return player.data().isMissionLeader;
+}
+
+// getter for isMissionMember
+async function getIsMissionMember(roomCode, name) {
+    const player = await getPlayer(roomCode, name);
+    return player.data().isMissionMember;
+}
+
+// setter for isMissionMember
+function setIsMissionMember(roomCode, name, value) {
+    db.collection("Rooms").doc(roomCode).collection('Players').doc(name).update({
+        isMissionMember: value
+    });
 }
