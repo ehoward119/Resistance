@@ -2,11 +2,13 @@
 const roomId = sessionStorage.getItem('roomID')
 const isHost = sessionStorage.getItem('isHost')
 const playerName =sessionStorage.getItem('playerName')
+const numPlayers = sessionStorage.getItem('numPlayers')
 const playersRef = db.collection('Rooms').doc(roomId).collection('Players')
 const roomRef =  db.collection('Rooms').doc(roomId)
 const identityButton = document.getElementById('identity')
 const yesButton = document.getElementById('yes')
 const noButton = document.getElementById('no')
+const selectionButton = document.getElementById('submit-button')
 
 // -------------------------------------------------------------------------------
 // Running the game
@@ -56,7 +58,6 @@ identityButton.addEventListener('click', () => {
 // -------------------------------------------------------------------------------
 
 async function runGame() {
-    displayMissionMembers();
     // get identity button
     identityButton.addEventListener('click', () => {
         getSecretIDHelp()
@@ -91,7 +92,7 @@ async function runGame() {
         // test console logs
         console.log("Round: " + await getRound(roomId));
         console.log("The Mission Leader is " + order[missionLeaderIndex]);
-        console.log("The number of mission members the mission is " 
+        console.log("The number of mission members in this mission is " 
             + numMissionMembers[resistanceScore + spyScore]);
         
         let status = await getIsMissionLeader(roomId, playerName);
@@ -100,14 +101,39 @@ async function runGame() {
         } else {
             document.getElementById('ML_status').innerHTML = "You are not the mission leader.";
         }
-
+        let numMembers = numMissionMembers[resistanceScore+spyScore];
+        displayMissionMembers(numMembers);
         // Mission Leader picks team members
         //------
-        // TODO
+        // TODO: remove sean and emily test
+        //       add setIsMissionMember to event listener thing
         //------
         // TEST: Sean and Emily and mission leaders
+
+        
+
         setIsMissionMember(roomId, "Sean", true);
         setIsMissionMember(roomId, "Emily", true);
+        selectionButton.addEventListener('click', () => {
+            selectionButton.disabled = true;  //restricts the user from pressing it more than once
+            if(status){ //checks if mission leader
+                let missionTeam = selectMissionTeam(numMembers);
+                console.log(missionTeam);
+                displaySelectedTeam(missionTeam);
+                //this assumes this is the right number of mission members
+                //Concern: If they don't select the right number, it will return nothing 
+                //--they could technically never submit again?
+            } else {
+                alert("You cannot select mission members because you're not the mission leader!");
+            }
+            
+        });
+
+        
+        //TODO: Write a display mission members function
+                //Should display the selected mission members after they are selected by leader
+        // Vote on the mission  members-> restart round with next leader if vote 
+        // fails, and increment the downvote counter
         
 
         // Vote on the mission members-> restart round with next leader if vote 
@@ -123,7 +149,6 @@ async function runGame() {
         } else {
             console.log("Downvote");
         }
-
         // Score is updated
         if (action == "pass") {
             console.log("Mission Succeeded!");
@@ -319,8 +344,11 @@ async function incrementDownvoteCounter(roomCode) {
     });
 }
 
-// display the players with check boxes for mission selections
-async function displayMissionMembers(){
+//Displays Mission members to be selected by the mission leader
+//Adds each player to the list and displays it w a checkbox
+//IDEA: Add functionality to only display title and list here, starts invisible
+async function displayMissionMembers(numMissionMembers){
+    document.getElementById("select-msg").innerHTML = "Select " + numMissionMembers + " Mission Members:";
     await playersRef.get().then(snapshot => {
         snapshot.docs.forEach(doc => {
             let name = doc.id;
@@ -482,6 +510,42 @@ function sleep(milliseconds) {
     do {
         currentDate = Date.now();
     } while (currentDate - date < milliseconds);
+//Selects mission members from checkbox list and returns the list of members
+//if there are the correct number selected. 
+function selectMissionTeam(numMissionMembers){
+    let count = 0; 
+    let list = document.getElementById("mission-members");
+    let members = list.getElementsByTagName("li");
+    let selected = new Array();
+    for(var i=0; i<members.length; i++){ 
+        var checkbox = members[i].getElementsByTagName("input");
+        var name = members[i].textContent; 
+        if(checkbox[0].checked){
+            count++;
+            selected.push(name);
+        }
+    }
+    console.log("Selected " + count + " members for this mission!");
+    if (count != numMissionMembers){
+        alert("Must have " + numMissionMembers + " members selected!");
+        selectionButton.disabled = false; //resets button to allow them to select again
+        return; 
+    }
+    return selected;
+    //TODO:
+        //  Call this not just in the host 
+}
+
+//Displays selected team above voting buttons
+function displaySelectedTeam(members){
+    var team = "";
+    for(var i=0; i<members.length; i++){
+        var member = members[i] + ", ";
+        console.log(member);
+        team = team.concat(member);
+        console.log(team);
+    }
+    document.getElementById("mission-team").innerHTML = "Mission Members: " + team;
 }
 
 
