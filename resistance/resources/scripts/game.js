@@ -96,11 +96,13 @@ async function runGame() {
             + numMissionMembers[resistanceScore + spyScore]);
         
         let status = await getIsMissionLeader(roomId, playerName);
+        // May be able to get moved oustide of the function
         if (status) {
             document.getElementById('ML_status').innerHTML = "You are now the mission leader.";
         } else {
             document.getElementById('ML_status').innerHTML = "You are not the mission leader.";
         }
+        
         let numMembers = numMissionMembers[resistanceScore+spyScore];
         displayMissionMembers(numMembers);
         // Mission Leader picks team members
@@ -112,8 +114,8 @@ async function runGame() {
 
         
 
-        setIsMissionMember(roomId, "Sean", true);
-        setIsMissionMember(roomId, "Emily", true);
+        //setIsMissionMember(roomId, "Sean", true);
+        //setIsMissionMember(roomId, "Emily", true);
         selectionButton.addEventListener('click', () => {
             selectionButton.disabled = true;  //restricts the user from pressing it more than once
             if(status){ //checks if mission leader
@@ -349,8 +351,16 @@ async function incrementDownvoteCounter(roomCode) {
 //IDEA: Add functionality to only display title and list here, starts invisible
 async function displayMissionMembers(numMissionMembers){
     document.getElementById("select-msg").innerHTML = "Select " + numMissionMembers + " Mission Members:";
+
+    // // TODO: Debug and clean this code
+    // while (document.getElementById("mission-members").firstChild) {
+    //     document.getElementById("mission-members").removeChild(document.getElementById("mission-members").lastChild);
+    //  }
+
     await playersRef.get().then(snapshot => {
         snapshot.docs.forEach(doc => {
+            // TODO: not make a list every 5 seconds
+            // TODO: display this information only to the host
             let name = doc.id;
             let li = document.createElement("li");
             let t = document.createTextNode(name);
@@ -366,6 +376,8 @@ async function displayMissionMembers(numMissionMembers){
 
 // prompt the player to vote
 async function countVotes() {
+    // TODO: Change the way that the voting works in here
+    //       Not use a confirm box. Use buttons instead
     if (confirm(("Do you approve of the mission? \n 'Cancel' for no, 'Ok' for yes"))) {
         setVote(roomId, playerName, true);
         setHasVoted(roomId, playerName, true);
@@ -510,6 +522,8 @@ function sleep(milliseconds) {
     do {
         currentDate = Date.now();
     } while (currentDate - date < milliseconds);
+}
+
 //Selects mission members from checkbox list and returns the list of members
 //if there are the correct number selected. 
 function selectMissionTeam(numMissionMembers){
