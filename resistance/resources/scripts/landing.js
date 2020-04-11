@@ -22,7 +22,7 @@ createForm.addEventListener('submit', (e) => {
             resistanceScore: 0,
             spyScore: 0,
             acceptingVotes: false,
-            missionTime: false
+            gameState: "none"
         }).then(() =>{
         db.collection('Rooms').doc(code).collection("Players").doc( createForm.name.value).set({
             rotNumber: 0,

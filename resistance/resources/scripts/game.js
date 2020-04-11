@@ -2,48 +2,79 @@
 const roomId = sessionStorage.getItem('roomID')
 const isHost = sessionStorage.getItem('isHost')
 const playerName =sessionStorage.getItem('playerName')
-const numPlayers = sessionStorage.getItem('numPlayers')
+const numPlayers = sessionStorage.getItem("numPlayers")
 const playersRef = db.collection('Rooms').doc(roomId).collection('Players')
 const roomRef =  db.collection('Rooms').doc(roomId)
 const identityButton = document.getElementById('identity')
 const yesButton = document.getElementById('yes')
 const noButton = document.getElementById('no')
 const selectionButton = document.getElementById('submit-button')
+let numMissionMembers = []
 
 // -------------------------------------------------------------------------------
 // Running the game
 //      The host is incharge of running the game
 // -------------------------------------------------------------------------------
+// Host starts the game with helper function
 console.log("Host: " + isHost);
+console.log("Name: " + playerName);
 if (isHost == "yes") {
-    runGame();
+    startUp();
 } else {
-    displayMissionMembers();
+    getNumPlayers(roomId).then((players) =>{assignNumMissionMembers(players);})
+    .then(()  => {
+    console.log("numMissionMembers: " + numMissionMembers);})
+}
 
-    // display whether or not the player is the mission leader
-    playersRef.onSnapshot((snapshot) =>{
+// Everyone listens for changes in the database
+playersRef.onSnapshot(async (snapshot) =>{
+    if (!snapshot.metadata.hasPendingWrites){
+        let gameState = await getGameState(roomId)
+        console.log("GameState: " + gameState)
+        if (gameState== "selecting"){
+            let leaderStatus = await getIsMissionLeader(roomId, playerName);
+            console.log("leaderStatus: " + leaderStatus);
+            // If leader, make them select their team
+            if(leaderStatus){
+                document.getElementById("ML_status").innerHTML = "You are now the mission leader.";
+                let round = await getRound(roomId);
+                let numMembers = numMissionMembers[round];
+                displayMissionMembers(numMembers);
+                // Wait for the player click select team
+                selectionButton.addEventListener('click', async () => {
+                    selectionButton.disabled= true;
+                    let missionTeam = selectMissionTeam(numMembers);
+                    console.log(missionTeam);
+                    if (missionTeam.length != 0){
+                        await updateMissionTeam(missionTeam);
+                        setGameState(roomId, "voting")
+                    }
+                    });
+            } else {
+                document.getElementById("ML_status").innerHTML ="Mission leader is selecting team";
+            }
+        } 
+        else if (getGameState(roomId) == "voting"){
+
+        } 
+        else if (getGameState(roomId) == "inMission"){
+
+        }
+    }
+})
+
+
+
+function updateMissionTeam(team){
+    playersRef.get().then(snapshot => {
         snapshot.docs.forEach(doc => {
-            if (doc.id == playerName) {
-                let status = doc.data().isMissionLeader;
-                if (status) {
-                    document.getElementById('ML_status').innerHTML = "You are now the mission leader.";
-                } else {
-                    document.getElementById('ML_status').innerHTML = "You are not the mission leader.";
-                }
+            let name = doc.id;
+            if(team.includes(name)){
+                console.log(name)
+                setIsMissionMember(roomId, name, true);
             }
         });
-    });
-
-    // handle voting / mission
-    roomRef.onSnapshot((snapshot) => {
-        if (snapshot.data().acceptingVotes) {
-            countVotes();
-        } else if (snapshot.data().missionTime) {
-            countMission();
-        } else {
-            // do nothing
-        }
-    });
+    })
 }
 
 
@@ -56,142 +87,27 @@ identityButton.addEventListener('click', () => {
 // -------------------------------------------------------------------------------
 // Helper Functions for running the game
 // -------------------------------------------------------------------------------
+async function startUp() {
+    console.log("NumMissionMembers: " + numMissionMembers)
 
-async function runGame() {
-    // get identity button
-    identityButton.addEventListener('click', () => {
-        getSecretIDHelp()
-    });
-
+    // NEEDS TO BE DONE ONCE
     // ******** Night Time ********
-    
     let order = [];
     numMissionMembers = await nightTime(order);
     console.log("Order: " + order)
-    
+    // This works ^_^
+    // numMissionMembers = People needed per mission
+    // order= mission member order
 
-
-    // ******** Game Time ********
-    
-    // Initiate variables
-    const numPlayers = await getNumPlayers(roomId);
+    // Resets all things just to make sure its fine
     await resetRound(roomId);
     await resetResistanceScore(roomId);
     await resetSpyScore(roomId);
     await resetDownvoteCounter(roomId)
-    let missionLeaderIndex = 0;
-    let resistanceScore = await getResistanceScore(roomId);
-    let spyScore = await getSpyScore(roomId);
-    let downvoteCounter = await getDownvoteCounter(roomId);
-
-    // each full iteratation is one round
-    while (resistanceScore < 3 && spyScore < 3 && downvoteCounter < 5) {
-        
-        // Initiate new round
-        await newRound(roomId, order[(await getRound(roomId))]);
-        // test console logs
-        console.log("Round: " + await getRound(roomId));
-        console.log("The Mission Leader is " + order[missionLeaderIndex]);
-        console.log("The number of mission members in this mission is " 
-            + numMissionMembers[resistanceScore + spyScore]);
-        
-        let status = await getIsMissionLeader(roomId, playerName);
-        // May be able to get moved oustide of the function
-        if (status) {
-            document.getElementById('ML_status').innerHTML = "You are now the mission leader.";
-        } else {
-            document.getElementById('ML_status').innerHTML = "You are not the mission leader.";
-        }
-        
-        let numMembers = numMissionMembers[resistanceScore+spyScore];
-        displayMissionMembers(numMembers);
-        // Mission Leader picks team members
-        //------
-        // TODO: remove sean and emily test
-        //       add setIsMissionMember to event listener thing
-        //------
-        // TEST: Sean and Emily and mission leaders
-
-        
-
-        //setIsMissionMember(roomId, "Sean", true);
-        //setIsMissionMember(roomId, "Emily", true);
-        selectionButton.addEventListener('click', () => {
-            selectionButton.disabled = true;  //restricts the user from pressing it more than once
-            if(status){ //checks if mission leader
-                let missionTeam = selectMissionTeam(numMembers);
-                console.log(missionTeam);
-                displaySelectedTeam(missionTeam);
-                //this assumes this is the right number of mission members
-                //Concern: If they don't select the right number, it will return nothing 
-                //--they could technically never submit again?
-            } else {
-                alert("You cannot select mission members because you're not the mission leader!");
-            }
-            
-        });
-
-        
-        //TODO: Write a display mission members function
-                //Should display the selected mission members after they are selected by leader
-        // Vote on the mission  members-> restart round with next leader if vote 
-        // fails, and increment the downvote counter
-        
-
-        // Vote on the mission members-> restart round with next leader if vote 
-        // fails, and increment the downvote counter
-
-        
-        let action = await vote();
-        
-        // Mission Members vote on the Mission if it passed
-        if (action == "pass") {
-            console.log("Vote Passed");
-            action = await runMission();
-        } else {
-            console.log("Downvote");
-        }
-        // Score is updated
-        if (action == "pass") {
-            console.log("Mission Succeeded!");
-            resetDownvoteCounter(roomId);
-            await incrementResistanceScore(roomId);
-        } 
-        else if (action == "fail") {
-            console.log("Mission Failed!");
-            resetDownvoteCounter(roomId);
-            await incrementSpyScore(roomId);
-        }
-        else if (action == "downvote") {
-            console.log("Mission Downvoted!");
-            await incrementDownvoteCounter(roomId);
-        } else {
-            console.log("Error: invalid action");
-        }
-        
-        // update local variables
-        resistanceScore = await getResistanceScore(roomId);
-        spyScore = await getSpyScore(roomId);
-        downvoteCounter = await getDownvoteCounter(roomId);
-        missionLeaderIndex = missionLeaderIndex + 1;
-        if (missionLeaderIndex ==  numPlayers) {
-            missionLeaderIndex = 0;
-        }
-        
-        // log the score
-        console.log("SCORE: Resistance: "+ resistanceScore + 
-            ", Spies: " + spyScore +
-            ", Downvotes: " + downvoteCounter);
-        
-    }
-
-    // display game winner
-    if (resistanceScore == 3) {
-        console.log("The Resistance wins!");
-    }
-    else {
-        console.log("The Spies win!");
-    }
+    await updateIsMissionLeader(roomId, order[0])
+    await setGameState(roomId, "selecting")
+    console.log("First leader: " + order[0])
+    console.log("NumMissionMembers: " + numMissionMembers)
 }
 
 // TEST FUNCTIONS
@@ -204,14 +120,34 @@ function simulateRound() {
 // randomly assign roles
 // returns array with the number of mission member indexed by round
 async function nightTime(order) {
-    const numPlayers = await getNumPlayers(roomId);
-    let roles = [];
-    let numMissionMembers = [];
-    
-    // determine number of spies depending on the number of players and 
+    let roles = assignNumMissionMembers(await getNumPlayers(roomId));
+   
+    // randomly distribute the spies
+    shuffle(roles);
+
+    // assign each player a role and gether the names of each player
+    let index = 0;
+    await playersRef.get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id;
+            setIsResistance(roomId, name, roles[index]);
+            order.push(name);
+            index++;
+        });
+        // Determine mission leader order
+        shuffle(order);
+    });
+    return numMissionMembers;
+}
+
+// Creates basic rules for the game
+function assignNumMissionMembers(players){
+// determine number of spies depending on the number of players and 
     // determine the number of mission members per round
     // *three player case for testing only*
-    switch (numPlayers) {
+    let roles = []
+
+    switch (players) {
         case 3:
             roles = [true, true, false];
             numMissionMembers = [2, 2, 2, 3, 3];
@@ -219,7 +155,7 @@ async function nightTime(order) {
 
         case 5:
             roles = [true, true, true, false, false]; 
-            numMissionMembers = [2, 3, 2, 3, 3];
+            numMissionMembers = [2, 3, 2,  3, 3];
             break;
 
         case 6:
@@ -250,25 +186,7 @@ async function nightTime(order) {
         default:
             console.log("Error in assignRoles() - irregular number of players.")
     }
-
-    // randomly distribute the spies
-    shuffle(roles);
-
-    // assign each player a role and gether the names of each player
-    let index = 0;
-    await playersRef.get().then(snapshot => {
-        snapshot.docs.forEach(doc => {
-            let name = doc.id;
-            setIsResistance(roomId, name, roles[index]);
-            order.push(name);
-            index++;
-        });
-        // Determine mission leader order
-        shuffle(order);
-    });
-
-    return numMissionMembers;
-        
+    return roles;
 }
 
 // shuffle array method taking from javascript.info website
@@ -351,13 +269,11 @@ async function incrementDownvoteCounter(roomCode) {
 //IDEA: Add functionality to only display title and list here, starts invisible
 async function displayMissionMembers(numMissionMembers){
     document.getElementById("select-msg").innerHTML = "Select " + numMissionMembers + " Mission Members:";
-
-    // // TODO: Debug and clean this code
-    // while (document.getElementById("mission-members").firstChild) {
-    //     document.getElementById("mission-members").removeChild(document.getElementById("mission-members").lastChild);
-    //  }
-
+    let list = document.getElementById("mission-members")
     await playersRef.get().then(snapshot => {
+        while (list.firstChild) {
+            list.removeChild(list.lastChild);
+        }
         snapshot.docs.forEach(doc => {
             // TODO: not make a list every 5 seconds
             // TODO: display this information only to the host
@@ -369,9 +285,10 @@ async function displayMissionMembers(numMissionMembers){
             checkbox.value = "pair";
             li.appendChild(checkbox);
             li.appendChild(t);
-            document.getElementById("mission-members").appendChild(li);
+            list.appendChild(li);
         });
     });
+    console.log("displayMembers function has run");
 }
 
 // prompt the player to vote
@@ -543,11 +460,9 @@ function selectMissionTeam(numMissionMembers){
     if (count != numMissionMembers){
         alert("Must have " + numMissionMembers + " members selected!");
         selectionButton.disabled = false; //resets button to allow them to select again
-        return; 
+        return []; 
     }
     return selected;
-    //TODO:
-        //  Call this not just in the host 
 }
 
 //Displays selected team above voting buttons
@@ -654,15 +569,15 @@ async function setAcceptingVotes(roomCode, value) {
 }
 
 // getter for missionTime
-async function getMissionTime(roomCode) {
+async function getGameState(roomCode) {
     const doc = await getRoom(roomCode);
-    return doc.data().missionTime;
+    return doc.data().gameState;
 }
 
 // setter for missionTime
-function setMissionTime(roomCode, value) {
+async function setGameState(roomCode, value) {
     db.collection("Rooms").doc(roomCode).update({
-        missionTime: value
+        gameState: value
     });
 }
 
