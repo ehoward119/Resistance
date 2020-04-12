@@ -10,6 +10,7 @@ const yesButton = document.getElementById('yes')
 const noButton = document.getElementById('no')
 const selectionButton = document.getElementById('submit-button')
 let numMissionMembers = []
+let order = []
 
 // -------------------------------------------------------------------------------
 // Running the game
@@ -28,39 +29,62 @@ if (isHost == "yes") {
 
 // Everyone listens for changes in the database
 playersRef.onSnapshot(async (snapshot) =>{
-    if (!snapshot.metadata.hasPendingWrites){
-        let gameState = await getGameState(roomId)
-        console.log("GameState: " + gameState)
-        if (gameState== "selecting"){
-            let leaderStatus = await getIsMissionLeader(roomId, playerName);
-            console.log("leaderStatus: " + leaderStatus);
-            // If leader, make them select their team
-            if(leaderStatus){
-                document.getElementById("ML_status").innerHTML = "You are now the mission leader.";
-                let round = await getRound(roomId);
-                let numMembers = numMissionMembers[round];
-                displayMissionMembers(numMembers);
-                // Wait for the player click select team
-                selectionButton.addEventListener('click', async () => {
-                    selectionButton.disabled= true;
-                    let missionTeam = selectMissionTeam(numMembers);
-                    console.log(missionTeam);
-                    if (missionTeam.length != 0){
-                        await updateMissionTeam(missionTeam);
-                        setGameState(roomId, "voting")
-                    }
-                    });
-            } else {
-                document.getElementById("ML_status").innerHTML ="Mission leader is selecting team";
-            }
-        } 
-        else if (getGameState(roomId) == "voting"){
-
-        } 
-        else if (getGameState(roomId) == "inMission"){
-
+    let gameState = await getGameState(roomId);
+    console.log("GameState: " + gameState)
+    if (gameState== "selecting"){
+        let leaderStatus = await getIsMissionLeader(roomId, playerName);
+        console.log("leaderStatus: " + leaderStatus);
+        // If leader, make them select their team
+        if(leaderStatus){
+            document.getElementById("ML_status").innerHTML = "You are now the mission leader.";
+            let round = await getRound(roomId);
+            let numMembers = numMissionMembers[round];
+            displayMissionMembers(numMembers);
+            // Wait for the player click select team
+            selectionButton.addEventListener('click', async () => {
+                selectionButton.disabled= true;
+                let missionTeam = selectMissionTeam(numMembers);
+                console.log(missionTeam);
+                if (missionTeam.length != 0){
+                    await updateMissionTeam(missionTeam);
+                    await setAcceptingVotes(roomId, true);
+                    await setGameState(roomId, "voting");
+                }
+                });
+        } else {
+            document.getElementById("ML_status").innerHTML ="Mission leader is selecting team";
         }
+    } 
+    else if (gameState == "voting"){
+        document.getElementById("ML_status").innerHTML ="Cast your vote & Wait";
+        if  (isHost == "yes"){
+                // HOST SHOULD CHECK IF ALL VOTES ARE CAST
+        }
+        // Grab the current team and display it----------------
+        // snapshot.docs.forEach(doc => {
+        //     const missionTeam = document.getElementById('mission-team')
+        //     if (doc.isMissionMember){
+        //         var entry = document.createElement("LI");
+        //         var text = document.createTextNode(doc.id);
+        //         entry.appendChild(text);
+        //         missionTeam.appendChild(entry); 
+        //     }
+        // })
+        // ----------------------------------------------------
+        
+    } 
+    else if (getGameState(roomId) == "inMission"){
+
     }
+    
+})
+
+// GAME STATE HAS CHANGED
+roomRef.onSnapshot((snapshot) =>{
+    if (snapshot.data().gameState == "voting"){
+        resetLeader(roomId)
+    }
+
 })
 
 
@@ -92,7 +116,6 @@ async function startUp() {
 
     // NEEDS TO BE DONE ONCE
     // ******** Night Time ********
-    let order = [];
     numMissionMembers = await nightTime(order);
     console.log("Order: " + order)
     // This works ^_^
@@ -239,6 +262,15 @@ async function updateIsMissionLeader(roomCode, leader) {
     });
 }
 
+async function resetLeader(roomCode) {
+    db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id;
+            setIsMissionLeader(roomCode, name, false);
+        });
+    });
+}
+
 // reset all votes, hasVoted
 async function clearVotes(roomCode) {
     db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
@@ -288,7 +320,6 @@ async function displayMissionMembers(numMissionMembers){
             list.appendChild(li);
         });
     });
-    console.log("displayMembers function has run");
 }
 
 // prompt the player to vote
@@ -575,7 +606,7 @@ async function getGameState(roomCode) {
 }
 
 // setter for missionTime
-async function setGameState(roomCode, value) {
+function setGameState(roomCode, value) {
     db.collection("Rooms").doc(roomCode).update({
         gameState: value
     });
