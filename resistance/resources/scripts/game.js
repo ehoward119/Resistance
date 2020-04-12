@@ -60,6 +60,7 @@ playersRef.onSnapshot(async (snapshot) =>{
         if  (isHost == "yes"){
                 // HOST SHOULD CHECK IF ALL VOTES ARE CAST
         }
+        // IDEA code below
         // Grab the current team and display it----------------
         // snapshot.docs.forEach(doc => {
         //     const missionTeam = document.getElementById('mission-team')
@@ -79,12 +80,12 @@ playersRef.onSnapshot(async (snapshot) =>{
     
 })
 
-// GAME STATE HAS CHANGED
+// Listener for the ROOM as a whole, can be used to check changes in state
+// and trigger certain events
 roomRef.onSnapshot((snapshot) =>{
     if (snapshot.data().gameState == "voting"){
         resetLeader(roomId)
     }
-
 })
 
 
