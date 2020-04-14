@@ -11,6 +11,7 @@ const noButton = document.getElementById('no')
 const selectionButton = document.getElementById('submit-button')
 let numMissionMembers = []
 let order = []
+let missionTeam = []
 
 // -------------------------------------------------------------------------------
 // Running the game
@@ -27,11 +28,13 @@ if (isHost == "yes") {
     console.log("numMissionMembers: " + numMissionMembers);})
 }
 
+let counter =0; 
 // Everyone listens for changes in the database
 playersRef.onSnapshot(async (snapshot) =>{
     let gameState = await getGameState(roomId);
     console.log("GameState: " + gameState)
-    if (gameState== "selecting"){
+    if (gameState== "selecting" && counter == 0){
+        counter++;
         let leaderStatus = await getIsMissionLeader(roomId, playerName);
         console.log("leaderStatus: " + leaderStatus);
         // If leader, make them select their team
@@ -43,7 +46,7 @@ playersRef.onSnapshot(async (snapshot) =>{
             // Wait for the player click select team
             selectionButton.addEventListener('click', async () => {
                 selectionButton.disabled= true;
-                let missionTeam = selectMissionTeam(numMembers);
+                missionTeam = selectMissionTeam(numMembers);
                 console.log(missionTeam);
                 if (missionTeam.length != 0){
                     await updateMissionTeam(missionTeam);
@@ -54,9 +57,15 @@ playersRef.onSnapshot(async (snapshot) =>{
         } else {
             document.getElementById("ML_status").innerHTML ="Mission leader is selecting team";
         }
+        counter =0; 
     } 
-    else if (gameState == "voting"){
+    else if (gameState == "voting" && counter == 0){
+        counter ++; 
         document.getElementById("ML_status").innerHTML ="Cast your vote & Wait";
+        await getMissionTeam();
+        console.log("missionTeam after get: " + missionTeam);
+        displaySelectedTeam(missionTeam);
+        
         if  (isHost == "yes"){
                 // HOST SHOULD CHECK IF ALL VOTES ARE CAST
         }
@@ -89,19 +98,41 @@ roomRef.onSnapshot((snapshot) =>{
 })
 
 
-
-function updateMissionTeam(team){
-    playersRef.get().then(snapshot => {
-        snapshot.docs.forEach(doc => {
+//Takes in the selected mission team and updates mission team in the database 
+async function updateMissionTeam(team){
+    console.log("Updating Mission team...")
+    playersRef.get().then(docs => { 
+        docs.forEach(doc => {
             let name = doc.id;
             if(team.includes(name)){
-                console.log(name)
                 setIsMissionMember(roomId, name, true);
             }
         });
     })
 }
 
+async function getMissionTeam(){
+    missionTeam = [];
+    let query = playersRef.where("isMissionMember", "==", true).get()
+    .then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id; 
+            missionTeam.push(name);
+        })
+        console.log("missionTeamInGet: " + missionTeam);
+    })
+}
+
+function resetMissionTeam(){
+    missionTeam = [];
+    console.log("MissionTeamInReset: " + missionTeam)
+    playersRef.get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id; 
+            setIsMissionMember(roomId, name, false);
+        })
+    })
+}
 
 // get identity button
 identityButton.addEventListener('click', () => {
@@ -113,8 +144,6 @@ identityButton.addEventListener('click', () => {
 // Helper Functions for running the game
 // -------------------------------------------------------------------------------
 async function startUp() {
-    console.log("NumMissionMembers: " + numMissionMembers)
-
     // NEEDS TO BE DONE ONCE
     // ******** Night Time ********
     numMissionMembers = await nightTime(order);
@@ -130,6 +159,7 @@ async function startUp() {
     await resetDownvoteCounter(roomId)
     await updateIsMissionLeader(roomId, order[0])
     await setGameState(roomId, "selecting")
+    await resetMissionTeam()
     console.log("First leader: " + order[0])
     console.log("NumMissionMembers: " + numMissionMembers)
 }
@@ -499,13 +529,13 @@ function selectMissionTeam(numMissionMembers){
 
 //Displays selected team above voting buttons
 function displaySelectedTeam(members){
-    var team = "";
-    for(var i=0; i<members.length; i++){
-        var member = members[i] + ", ";
+    var team = members[0];
+    for(var i=1; i<members.length; i++){
+        var member = "," + members[i];
         console.log(member);
         team = team.concat(member);
-        console.log(team);
     }
+    console.log("MissionTeamInDisplay: " + team);
     document.getElementById("mission-team").innerHTML = "Mission Members: " + team;
 }
 
