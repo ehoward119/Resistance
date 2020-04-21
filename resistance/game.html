@@ -39,23 +39,29 @@
     <header className="landing-header">
         <h1><a href="index.html">Secret Sagehen Resistance!</a></h1>
     </header>
-    <h1>You made it to the game page</h1>
     <div class="content">
-      <p id="ML_status">mission leader status</p>
-  </div>
-    <div class="player data">
       <button id="identity">Get Secret Identity</button>
+      <h2 id="resistScore">Stagthenas: 0</h2>
+      <h2 id="spyScore">Sagehens: 0</h2>
+      <p id="ML_status">mission leader status</p>
     </div>
-    <div class= "mission-selector">
+    <div class= "mission-selector" id="selector">
       <h3 id="select-msg">Select Mission Members</h3>
       <ul>
         <li id="mission-members"></li>
       </ul>
-      <button id="submit-button">Submit Selection</button>
-  <div class = "voting">
+      <button id="submit-button">Submit Selection</button> </div>
+  <div class = "voting" id="selectingMembers">
     <h3 id="mission-team">Mission Members:</h3>
+    <p> Do you approve of this team?</p>
     <button id="yes">Yes</button>
     <button id="no">No</button>
-  </div>    <script src="./resources/scripts/game.js"></script>
+  </div>
+  <div class= "passing" id= "passingID">
+    <h3>You're in the mission! Cast your decision:</h3>
+    <button id="pass">PASS</button>
+    <button id="fail">FAIL</button>
+  </div>   
+   <script src="./resources/scripts/game.js"></script>
   </body>
 </html>
