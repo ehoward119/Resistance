@@ -58,6 +58,7 @@ if (isHost == "yes") {
 playersRef.onSnapshot(async (snapshot) =>{
     missionMembers.style.display = "none"
     selectingMembers.style.display = "none"
+    missionPoll.style.display = "none"
     let gameState = await getGameState(roomId);
     console.log("GameState: " + gameState)
     if (gameState== "selecting"){
@@ -104,6 +105,7 @@ playersRef.onSnapshot(async (snapshot) =>{
     } 
     // We're now on  a mission
     else if (gameState == "inMission"){
+        missionPoll.style.display = "block"
         // Host listens for any vote, and changes the state if need be
         if (isHost == "yes") {
             console.log("Checking for mission votes")
@@ -131,28 +133,42 @@ playersRef.onSnapshot(async (snapshot) =>{
                 // Rule of 2 failures in round 4
                 if(round != 4){
                     if(spyVote > 0){
-                        incrementSpyScore(roomId).then(
-                        incrementRound(roomId)
-                        )
+                        document.getElementById("ML_status").innerHTML = "Spies win this round!"
+                        incrementSpyScore(roomId).then( () => {
+                            incrementRound(roomId)
+                            moveToNewRound()
+                        })
                     } else {
-                        incrementResistanceScore(roomId).then(
-                        incrementRound(roomId)
-                        )
+                        incrementResistanceScore(roomId).then( () => {
+                            incrementRound(roomId)
+                            moveToNewRound()
+                        })
                     }
                 } else if(spyVote>1){
-                    incrementSpyScore(roomId).then(
-                    incrementRound(roomId)
-                    )
+                    incrementSpyScore(roomId).then(()=> {
+                        incrementRound(roomId)
+                        moveToNewRound()
+                    })
                 } else {
-                    incrementResistanceScore(roomId).then(
-                    incrementRound(roomId)
-                    )
+                    incrementResistanceScore(roomId).then( () => {
+                        incrementRound(roomId)
+                        moveToNewRound()
+                    })
                 }
             }
         }
     }
     
 })
+
+async function moveToNewRound(){
+    clearVotes(roomId).then(() => {
+        resetMissionTeam()
+        setGameState(roomId, "selecting")
+        console.log("Resetting... new round!")
+
+    })
+}
 
 // Listener for the ROOM as a whole, can be used to check changes in state
 // and trigger certain events
@@ -180,12 +196,14 @@ roomRef.onSnapshot((snapshot) =>{
                 else {numNo++; }
                 })
                 if (numYes>numNo){
+                    clearVotes(roomId).then(() => {
                     setGameState(roomId, "inMission")
                     resetDownvoteCounter(roomId)
                     leaderIndex +=1
                     leaderIndex = leaderIndex % numPlayers
                     updateIsMissionLeader(roomId, order[leaderIndex])
-                    clearVotes(roomId)
+                    })
+                    
                 } else{
                     // -- Can be helper function ------------------------
                     clearVotes(roomId).then( () =>{
@@ -470,6 +488,7 @@ async function incrementDownvoteCounter(roomCode) {
 //IDEA: Add functionality to only display title and list here, starts invisible
 async function displayMissionMembers(numMissionMembers){
     missionMembers.style.display = "block"
+    selectionButton.disabled = false;
     document.getElementById("select-msg").innerHTML = "Select " + numMissionMembers + " Mission Members:";
     let list = document.getElementById("mission-members")
     await playersRef.get().then(snapshot => {
