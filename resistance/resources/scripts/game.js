@@ -68,18 +68,22 @@ playersRef.onSnapshot(async (snapshot) =>{
         if(leaderStatus){
             document.getElementById("ML_status").innerHTML = "You are now the mission leader.";
             let round = await getRound(roomId);
+            console.log("Round: " + round);
             let numMembers = numMissionMembers[round];
             displayMissionMembers(numMembers);
             // Wait for the player click select team
-            selectionButton.addEventListener('click', async () => {
+            //MOVE THIS OUTSIDE
+            selectionButton.addEventListener('click', () => {
                 selectionButton.disabled= true;
+                //UNCHECK HERE
                 missionTeam = selectMissionTeam(numMembers);
                 console.log(missionTeam);
                 if (missionTeam.length != 0){
-                    await updateMissionTeam(missionTeam);
-                    await setAcceptingVotes(roomId, true);
-                    // TODO: set round in this line
-                    await setGameState(roomId, "voting");
+                    updateMissionTeam(missionTeam).then(
+                    setAcceptingVotes(roomId, true).then( 
+                    setGameState(roomId, "voting")
+                    ))
+                    // TODO: set round in this SOMEWHERE HERE
                 }
                 });
         } else {
@@ -87,6 +91,7 @@ playersRef.onSnapshot(async (snapshot) =>{
         } 
     } 
     else if (gameState == "voting"){
+        document.getElementById("scoreUpdate").style.display = "none"
         selectingMembers.style.display = "block"
         document.getElementById("ML_status").innerHTML ="Cast your vote & Wait";
         displaySelectedTeam(missionTeam);
@@ -105,7 +110,10 @@ playersRef.onSnapshot(async (snapshot) =>{
     } 
     // We're now on  a mission
     else if (gameState == "inMission"){
-        missionPoll.style.display = "block"
+        let isMissionMember = await getIsMissionMember(roomId, playerName)
+        if(isMissionMember){
+            missionPoll.style.display = "block"
+        }
         // Host listens for any vote, and changes the state if need be
         if (isHost == "yes") {
             console.log("Checking for mission votes")
@@ -129,30 +137,30 @@ playersRef.onSnapshot(async (snapshot) =>{
                         } 
                     }
                 })
+                document.getElementById("scoreUpdate").style.display="block"
                 let round = await getRound(roomId)
                 // Rule of 2 failures in round 4
                 if(round != 4){
                     if(spyVote > 0){
-                        document.getElementById("ML_status").innerHTML = "Spies win this round!"
+                        document.getElementById("scoreUpdate").innerHTML = "Spies win this round!"
                         incrementSpyScore(roomId).then( () => {
-                            incrementRound(roomId)
-                            moveToNewRound()
+                            incrementRound(roomId).then(moveToNewRound())
                         })
                     } else {
+                        document.getElementById("scoreUpdate").innerHTML = "The Resistance wins this round!"
                         incrementResistanceScore(roomId).then( () => {
-                            incrementRound(roomId)
-                            moveToNewRound()
+                            incrementRound(roomId).then(moveToNewRound())
                         })
                     }
                 } else if(spyVote>1){
+                    document.getElementById("scoreUpdate").innerHTML = "Spies win this round!"
                     incrementSpyScore(roomId).then(()=> {
-                        incrementRound(roomId)
-                        moveToNewRound()
+                        incrementRound(roomId).then(moveToNewRound())
                     })
                 } else {
+                    document.getElementById("scoreUpdate").innerHTML = "The Resistance wins this round!"
                     incrementResistanceScore(roomId).then( () => {
-                        incrementRound(roomId)
-                        moveToNewRound()
+                        incrementRound(roomId).then(moveToNewRound())
                     })
                 }
             }
@@ -166,7 +174,6 @@ async function moveToNewRound(){
         resetMissionTeam()
         setGameState(roomId, "selecting")
         console.log("Resetting... new round!")
-
     })
 }
 
@@ -514,7 +521,8 @@ async function displayMissionMembers(numMissionMembers){
 //Selects mission members from checkbox list and returns the list of members
 //if there are the correct number selected. 
 function selectMissionTeam(numMissionMembers){
-
+    console.log("I'M IN THE SELECT FUNCTION")
+    console.log("PEOPLE IN THE MISSION I WANT: "+ numMissionMembers)
     let count = 0; 
     let list = document.getElementById("mission-members");
     let members = list.getElementsByTagName("li");
@@ -523,7 +531,7 @@ function selectMissionTeam(numMissionMembers){
         var checkbox = members[i].getElementsByTagName("input");
         var name = members[i].textContent; 
         if(checkbox[0].checked){
-            count++;
+            count += 1;
             selected.push(name);
         }
     }
@@ -531,6 +539,13 @@ function selectMissionTeam(numMissionMembers){
     if (count != numMissionMembers){
         alert("Must have " + numMissionMembers + " members selected!");
         selectionButton.disabled = false; //resets button to allow them to select again
+        for(var i=0; i<members.length; i++){ 
+            var checkbox = members[i].getElementsByTagName("input");
+            if(checkbox[0].checked){
+                checkbox[0].checked = false;
+            }
+            console.log("finished unchecking")
+        }
         return []; 
     }
     return selected;
