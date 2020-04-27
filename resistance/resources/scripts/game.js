@@ -132,27 +132,23 @@ playersRef.onSnapshot(async (snapshot) =>{
                     if(spyVote > 0){
                         document.getElementById("scoreUpdate").innerHTML = "Spies win this round!"
                         incrementSpyScore(roomId).then( () => {
-                            round += 1;
-                            incrementRound(roomId).then(moveToNewRound(round))
+                            incrementRound(roomId).then(moveToNewRound())
                         })
                     } else {
                         document.getElementById("scoreUpdate").innerHTML = "The Resistance wins this round!"
                         incrementResistanceScore(roomId).then( () => {
-                            round += 1;
-                            incrementRound(roomId).then(moveToNewRound(round))
+                            incrementRound(roomId).then(moveToNewRound())
                         })
                     }
                 } else if(spyVote>1){
                     document.getElementById("scoreUpdate").innerHTML = "Spies win this round!"
                     incrementSpyScore(roomId).then(()=> {
-                        round += 1;
-                        incrementRound(roomId).then(moveToNewRound(round))
+                        incrementRound(roomId).then(moveToNewRound())
                     })
                 } else {
                     document.getElementById("scoreUpdate").innerHTML = "The Resistance wins this round!"
                     incrementResistanceScore(roomId).then( () => {
-                        round += 1;
-                        incrementRound(roomId).then(moveToNewRound(round))
+                        incrementRound(roomId).then(moveToNewRound())
                     })
                 }
             }
@@ -163,7 +159,7 @@ playersRef.onSnapshot(async (snapshot) =>{
 
 //Handles moving to a new round
 //clears votes, resets mission team and switches the gamestate
-async function moveToNewRound(round){
+async function moveToNewRound(){
     clearVotes(roomId).then(() => {
         resetMissionTeam()
         setGameState(roomId, "selecting")
