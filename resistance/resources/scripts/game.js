@@ -34,10 +34,11 @@ const spyScore = document.getElementById('spyScore')
 const resistScore = document.getElementById('resistScore')
 //----------------------------------------------------------------------------
 
-let numMissionMembers = []
+let numMissionMembersList = []
+let numMissionMembers = 0
 let order = []
 let missionTeam = []
-let leaderIndex = 0
+let leaderIndex =0
 
 // -------------------------------------------------------------------------------
 // Running the game
@@ -51,7 +52,7 @@ if (isHost == "yes") {
 } else {
     getNumPlayers(roomId).then((players) =>{assignNumMissionMembers(players);})
     .then(()  => {
-    console.log("numMissionMembers: " + numMissionMembers);})
+    console.log("numMissionMembersList: " + numMissionMembersList);})
 }
 
 // Everyone listens for changes in the database
@@ -69,23 +70,10 @@ playersRef.onSnapshot(async (snapshot) =>{
             document.getElementById("ML_status").innerHTML = "You are now the mission leader.";
             let round = await getRound(roomId);
             console.log("Round: " + round);
-            let numMembers = numMissionMembers[round];
-            displayMissionMembers(numMembers);
+            numMissionMembers = numMissionMembersList[round]; 
+            console.log("New numMissionMembers = "+ numMissionMembers)
+            displayMissionMembers();
             // Wait for the player click select team
-            //MOVE THIS OUTSIDE
-            selectionButton.addEventListener('click', () => {
-                selectionButton.disabled= true;
-                //UNCHECK HERE
-                missionTeam = selectMissionTeam(numMembers);
-                console.log(missionTeam);
-                if (missionTeam.length != 0){
-                    updateMissionTeam(missionTeam).then(
-                    setAcceptingVotes(roomId, true).then( 
-                    setGameState(roomId, "voting")
-                    ))
-                    // TODO: set round in this SOMEWHERE HERE
-                }
-                });
         } else {
             document.getElementById("ML_status").innerHTML ="Mission leader is selecting team";
         } 
@@ -144,23 +132,27 @@ playersRef.onSnapshot(async (snapshot) =>{
                     if(spyVote > 0){
                         document.getElementById("scoreUpdate").innerHTML = "Spies win this round!"
                         incrementSpyScore(roomId).then( () => {
-                            incrementRound(roomId).then(moveToNewRound())
+                            round += 1;
+                            incrementRound(roomId).then(moveToNewRound(round))
                         })
                     } else {
                         document.getElementById("scoreUpdate").innerHTML = "The Resistance wins this round!"
                         incrementResistanceScore(roomId).then( () => {
-                            incrementRound(roomId).then(moveToNewRound())
+                            round += 1;
+                            incrementRound(roomId).then(moveToNewRound(round))
                         })
                     }
                 } else if(spyVote>1){
                     document.getElementById("scoreUpdate").innerHTML = "Spies win this round!"
                     incrementSpyScore(roomId).then(()=> {
-                        incrementRound(roomId).then(moveToNewRound())
+                        round += 1;
+                        incrementRound(roomId).then(moveToNewRound(round))
                     })
                 } else {
                     document.getElementById("scoreUpdate").innerHTML = "The Resistance wins this round!"
                     incrementResistanceScore(roomId).then( () => {
-                        incrementRound(roomId).then(moveToNewRound())
+                        round += 1;
+                        incrementRound(roomId).then(moveToNewRound(round))
                     })
                 }
             }
@@ -169,13 +161,27 @@ playersRef.onSnapshot(async (snapshot) =>{
     
 })
 
-async function moveToNewRound(){
+//Handles moving to a new round
+//clears votes, resets mission team and switches the gamestate
+async function moveToNewRound(round){
     clearVotes(roomId).then(() => {
         resetMissionTeam()
         setGameState(roomId, "selecting")
-        console.log("Resetting... new round!")
     })
 }
+
+selectionButton.addEventListener('click', () => {
+    selectionButton.disabled= true;
+    missionTeam = selectMissionTeam();
+    console.log(missionTeam);
+    if (missionTeam.length != 0){
+        updateMissionTeam(missionTeam).then(
+        setAcceptingVotes(roomId, true).then( 
+        setGameState(roomId, "voting")
+        ))
+        // TODO: set round in this SOMEWHERE HERE
+    }
+    });
 
 // Listener for the ROOM as a whole, can be used to check changes in state
 // and trigger certain events
@@ -309,10 +315,10 @@ identityButton.addEventListener('click', () => {
 async function startUp() {
     // NEEDS TO BE DONE ONCE
     // ******** Night Time ********
-    numMissionMembers = await nightTime(order);
+    numMissionMembersList = await nightTime(order);
     console.log("Order: " + order)
     // This works ^_^
-    // numMissionMembers = People needed per mission
+    // numMissionMembersList = People needed per mission
     // order= mission member order
 
     // Resets all things just to make sure its fine
@@ -324,7 +330,7 @@ async function startUp() {
     await setGameState(roomId, "selecting")
     await resetMissionTeam()
     console.log("First leader: " + order[0])
-    console.log("NumMissionMembers: " + numMissionMembers)
+    console.log("NumMissionMembersList: " + numMissionMembersList)
 }
 
 // TEST FUNCTIONS
@@ -354,7 +360,7 @@ async function nightTime(order) {
         // Determine mission leader order
         shuffle(order);
     });
-    return numMissionMembers;
+    return numMissionMembersList;
 }
 
 // Creates basic rules for the game
@@ -367,37 +373,44 @@ function assignNumMissionMembers(players){
     switch (players) {
         case 3:
             roles = [true, true, false];
-            numMissionMembers = [2, 2, 2, 3, 3];
+            numMissionMembersList = [1, 2, 3, 1, 0]; //weird numbers for testing
+            numMissionMembers = 1;
             break;
 
         case 5:
             roles = [true, true, true, false, false]; 
-            numMissionMembers = [2, 3, 2,  3, 3];
+            numMissionMembersList = [2, 3, 2,  3, 3];
+            numMissionMembers = 2; 
             break;
 
         case 6:
             roles = [true, true, true, true, false, false]; 
-            numMissionMembers = [2, 3, 4, 3, 4];
+            numMissionMembersList = [2, 3, 4, 3, 4];
+            numMissionMembers = 2; 
             break;
 
         case 7:
             roles = [true, true, true, true, false, false, false]; 
-            numMissionMembers = [2, 3, 3, 4, 4];
+            numMissionMembersList = [2, 3, 3, 4, 4];
+            numMissionMembers = 2; 
             break;
                 
         case 8:
             roles = [true, true, true, true, true, false, false, false]; 
-            numMissionMembers = [3, 4, 4, 5, 5];
+            numMissionMembersList = [3, 4, 4, 5, 5];
+            numMissionMembers=3;
             break;
         
         case 9:
             roles = [true, true, true, true, true, true, false, false, false]; 
-            numMissionMembers = [3, 4, 4, 5, 5];            
+            numMissionMembers = [3, 4, 4, 5, 5];   
+            numMissionMembers = 3;         
             break;
                 
         case 10:
             roles = [true, true, true, true, true, true, false, false, false, false];
-            numMissionMembers = [3, 4, 4, 5, 5];            
+            numMissionMembersList = [3, 4, 4, 5, 5];    
+            numMissionMembers = 3;         
             break;
         
         default:
@@ -493,7 +506,7 @@ async function incrementDownvoteCounter(roomCode) {
 //Displays Mission members to be selected by the mission leader
 //Adds each player to the list and displays it w a checkbox
 //IDEA: Add functionality to only display title and list here, starts invisible
-async function displayMissionMembers(numMissionMembers){
+async function displayMissionMembers(){
     missionMembers.style.display = "block"
     selectionButton.disabled = false;
     document.getElementById("select-msg").innerHTML = "Select " + numMissionMembers + " Mission Members:";
@@ -520,9 +533,7 @@ async function displayMissionMembers(numMissionMembers){
 
 //Selects mission members from checkbox list and returns the list of members
 //if there are the correct number selected. 
-function selectMissionTeam(numMissionMembers){
-    console.log("I'M IN THE SELECT FUNCTION")
-    console.log("PEOPLE IN THE MISSION I WANT: "+ numMissionMembers)
+function selectMissionTeam(){
     let count = 0; 
     let list = document.getElementById("mission-members");
     let members = list.getElementsByTagName("li");
@@ -544,7 +555,6 @@ function selectMissionTeam(numMissionMembers){
             if(checkbox[0].checked){
                 checkbox[0].checked = false;
             }
-            console.log("finished unchecking")
         }
         return []; 
     }
