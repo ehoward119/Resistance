@@ -51,6 +51,10 @@ a:visited{
   padding: 10vh;
   min-height: 60vh;
 }
+ul{
+  list-style-type: none;
+}
+
 /* Temporary button style, modfied from https://fdossena.com/?p=html5cool/buttons/i.frag*/
 button{
   display:inline-block;
@@ -94,3 +98,4 @@ br {
   border-color: black;
   padding: 10px ;
 }
+

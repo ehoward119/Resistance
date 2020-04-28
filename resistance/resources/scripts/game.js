@@ -43,15 +43,21 @@ let localResScore = 0
 let localSpyScore = 0
 
 // -------------------------------------------------------------------------------
-// Running the game
-//      The host is incharge of running the game
 // -------------------------------------------------------------------------------
+// Running the game
+//      The host is in charge of running the game
+// -------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
+
+
 // Host starts the game with helper function
 console.log("Host: " + isHost);
 console.log("Name: " + playerName);
 missionMembers.style.display = "none"
 selectingMembers.style.display = "none"
 missionPoll.style.display = "none"
+document.getElementById('win_msg').style.display = "none"
+
 if (isHost == "yes") {
     startUp();
 } else {
@@ -61,11 +67,11 @@ if (isHost == "yes") {
 }
 
 
-// Everyone listens for changes in the database
+// Everyone listens for changes in the players collection in the database
 playersRef.onSnapshot(async (snapshot) =>{
     if(!snapshot.hasPendingWrites){
-
     let gameState = await getGameState(roomId);
+
     if (gameState== "selecting"){
         missionMembers.style.display = "none"
         missionPoll.style.display = "none"
@@ -155,27 +161,6 @@ playersRef.onSnapshot(async (snapshot) =>{
     }   
 })
 
-//Handles moving to a new round
-//clears votes, resets mission team and switches the gamestate
-async function moveToNewRound(){
-    clearVotes(roomId).then(() => {
-        resetMissionTeam()
-        setGameState(roomId, "selecting")
-    })
-}
-
-selectionButton.addEventListener('click', () => {
-    selectionButton.disabled= true;
-    missionTeam = selectMissionTeam();
-    console.log(missionTeam);
-    if (missionTeam.length != 0){
-        updateMissionTeam(missionTeam).then( () =>{
-            setGameState(roomId, "voting")
-            setAcceptingVotes(roomId, true)
-        })        
-    }
-});
-
 // Listener for the ROOM as a whole, can be used to check changes in state
 // and trigger certain events
 roomRef.onSnapshot((snapshot) =>{
@@ -252,6 +237,33 @@ if(!snapshot.hasPendingWrites){
 }
 })
 
+// -------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
+// BUTTON LISTENERS
+// -------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
+
+
+// get identity button
+identityButton.addEventListener('click', () => {
+    getSecretIDHelp()
+});
+
+//submit button for selecting mission members
+selectionButton.addEventListener('click', () => {
+    selectionButton.disabled= true;
+    missionTeam = selectMissionTeam();
+    console.log(missionTeam);
+    if (missionTeam.length != 0){
+        updateMissionTeam(missionTeam).then( () =>{
+            setGameState(roomId, "voting")
+            setAcceptingVotes(roomId, true)
+        })        
+    }
+});
+
+//yes and no buttons for approving a mission team 
+
 yesButton.addEventListener('click', () =>{
     setVote(roomId,playerName,true)
     setHasVoted(roomId, playerName, true)
@@ -262,6 +274,7 @@ noButton.addEventListener('click', () =>{
     setHasVoted(roomId, playerName, true)
 })
 
+//pass and fail buttons for in mission voting
 passButton.addEventListener('click', () =>{
     setVote(roomId,playerName,true)
     setHasVoted(roomId, playerName, true)
@@ -272,58 +285,19 @@ failButton.addEventListener('click', () =>{
     setHasVoted(roomId, playerName, true)
 })
 
-
-
-//Takes in the selected mission team and updates mission team in the database 
-async function updateMissionTeam(team){
-    console.log("Updating Mission team...")
-    playersRef.get().then(docs => { 
-        docs.forEach(doc => {
-            let name = doc.id;
-            if(team.includes(name)){
-                setIsMissionMember(roomId, name, true);
-            }
-        });
-    })
-}
-
-function getMissionTeam(){
-    missionTeam = [];
-    playersRef.where("isMissionMember", "==", true).get()
-    .then(snapshot => {
-        snapshot.docs.forEach(doc => {
-            let name = doc.id; 
-            missionTeam.push(name);
-        })
-        document.getElementById('mission-team').innerHTML = "Mission Members: " + [...new Set(missionTeam)]
-    })
-}
-
-function resetMissionTeam(){
-    missionTeam = [];
-    console.log("MissionTeamInReset: " + missionTeam)
-    playersRef.get().then(snapshot => {
-        snapshot.docs.forEach(doc => {
-            let name = doc.id; 
-            setIsMissionMember(roomId, name, false);
-        })
-    })
-}
-
-// get identity button
-identityButton.addEventListener('click', () => {
-    getSecretIDHelp()
-});
-
-
+// -------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------
 // Helper Functions for running the game
 // -------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
+
+
+//--------------------- Set up functions -----------------------------------------
+
 async function startUp() {
     // ******** Night Time ********
     numMissionMembersList = await nightTime(order);
     setOrder(roomId, order)
-    // This works
     // numMissionMembersList = People needed per mission
     // order= mission member order
 
@@ -338,7 +312,6 @@ async function startUp() {
     console.log("First leader: " + order[0])
     console.log("NumMissionMembersList: " + numMissionMembersList)
 }
-
 
 // randomly assign roles
 // returns array with the number of mission member indexed by round
@@ -434,81 +407,10 @@ async function getSecretIDHelp() {
     else alert("You're a sagehen!")
 }
 
-
-// reset downvoteCounter to zero
-function resetDownvoteCounter(roomCode) {
-    db.collection("Rooms").doc(roomCode).update({
-        downvoteCounter: 0
-    });
-}
-
-// update for isMissionLeader
-async function updateIsMissionLeader(roomCode, leader) {
-    db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
-        snapshot.docs.forEach(doc => {
-            let name = doc.id;
-            if (name == leader) {
-                setIsMissionLeader(roomCode, name, true);
-            } 
-            else {
-                setIsMissionLeader(roomCode, name, false);
-            }
-        });
-    });
-}
-
-async function resetLeader(roomCode) {
-    db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
-        snapshot.docs.forEach(doc => {
-            let name = doc.id;
-            setIsMissionLeader(roomCode, name, false);
-        });
-    });
-}
-
-function updateScores(snapshot){
-    resistScore.innerHTML="Stagthenas: " + snapshot.data().resistanceScore
-    spyScore.innerHTML="Sagehens: " + snapshot.data().spyScore
-    if(snapshot.data().spyScore > localSpyScore) {
-        document.getElementById("scoreUpdate").style.display="block"
-        document.getElementById("scoreUpdate").innerHTML = "Sagehens win this round!"
-        localSpyScore += 1
-    }
-    if(snapshot.data().resistanceScore > localResScore){
-        document.getElementById("scoreUpdate").style.display="block"
-        document.getElementById("scoreUpdate").innerHTML = "Stagthenas wins this round!"
-        localResScore += 1
-    }
-}
-
-// reset all votes, hasVoted
-async function clearVotes(roomCode) {
-    db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
-        snapshot.docs.forEach(doc => {
-            let name = doc.id;
-            setHasVoted(roomCode, name, false);
-            setVote(roomCode, name, false);
-        });
-    });
-}
-
-// increment round by one
-async function incrementRound(roomCode) {
-    db.collection("Rooms").doc(roomCode).update({
-        round: (await getRound(roomCode) + 1)
-    });
-}
-
-// increment downvoteCounter by one
-async function incrementDownvoteCounter(roomCode) {
-    db.collection("Rooms").doc(roomCode).update({
-        downvoteCounter: (await getDownvoteCounter(roomCode) + 1)
-    });
-}
+//----------------------------- Mission team selection functions ---------------------
 
 //Displays Mission members to be selected by the mission leader
 //Adds each player to the list and displays it w a checkbox
-//IDEA: Add functionality to only display title and list here, starts invisible
 function displayMissionMembers(){
     missionMembers.style.display = "block"
     selectionButton.disabled = false;
@@ -562,6 +464,22 @@ function selectMissionTeam(){
     return selected;
 }
 
+
+//Takes in the selected mission team and updates mission team in the database 
+async function updateMissionTeam(team){
+    console.log("Updating Mission team...")
+    playersRef.get().then(docs => { 
+        docs.forEach(doc => {
+            let name = doc.id;
+            if(team.includes(name)){
+                setIsMissionMember(roomId, name, true);
+            }
+        });
+    })
+}
+
+//--------------------------- Team voting functions -----------------------------
+
 //Displays selected team above voting buttons
 function displaySelectedTeam(members){
     var team = members[0];
@@ -570,20 +488,55 @@ function displaySelectedTeam(members){
         console.log(member);
         team = team.concat(member);
     }
-    console.log("MissionTeamInDisplay: " + team);
     document.getElementById("mission-team").innerHTML = "Mission Members: " + team;
 }
 
+//---------------------------- Round change function ------------------------------
+
+//Handles moving to a new round
+//clears votes, resets mission team and switches the gamestate
+async function moveToNewRound(){
+    clearVotes(roomId).then(() => {
+        resetMissionTeam()
+        setGameState(roomId, "selecting")
+    })
+}
+
+//---------------------------- Score update function -----------------------------
+
+function updateScores(snapshot){
+    resistScore.innerHTML="Stagthenas: " + snapshot.data().resistanceScore
+    spyScore.innerHTML="Sagehens: " + snapshot.data().spyScore
+    if(snapshot.data().spyScore > localSpyScore) {
+        document.getElementById("scoreUpdate").style.display="block"
+        document.getElementById("scoreUpdate").innerHTML = "Sagehens win this round!"
+        localSpyScore += 1
+    }
+    if(snapshot.data().resistanceScore > localResScore){
+        document.getElementById("scoreUpdate").style.display="block"
+        document.getElementById("scoreUpdate").innerHTML = "Stagthenas win this round!"
+        localResScore += 1
+    }
+}
+
+
+//------------------------------- End game function --------------------------------
+
 // Simple function to check for win condition
 function checkWin(snapshot){
-    if(snapshot.data().resistanceScore == 3 || snapshot.data().spyScore == 3 ){
+    if(snapshot.data().resistanceScore == 3 || snapshot.data().spyScore == 3){
         missionPoll.remove()
         missionMembers.remove()
         selectingMembers.remove()
+        identityButton.remove()
+        document.getElementById('order').style.display = "none"
+        document.getElementById('scoreUpdate').style.display = "none"
+        document.getElementById('ML_status').style.display = "none"
+        document.getElementById('win_msg').style.display = "block"
         if (snapshot.data().resistanceScore == 3 ){
-            document.getElementById("ML_status").innerHTML ="Stagthenas win! Refresh page to play again";
+            document.getElementById("win_msg").innerHTML ="Stagthenas win! Refresh the page to play again.";
         } else {
-            document.getElementById("ML_status").innerHTML ="Sagehens win! Refresh page to play again";
+            document.getElementById("win_msg").innerHTML ="Sagehens win! Refresh the page to play again.";
         }
         setGameState(roomId, "over")
         return true
@@ -593,10 +546,13 @@ function checkWin(snapshot){
 }
 
 // -------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
 // Getter and Setter Functions
 // -------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------
 
-// ROOM METHODS
+
+//------------------------ ROOM METHODS ------------------------------------------
 
 // returns the desired room - useful for getting data from the room
 async function getRoom(roomCode) {
@@ -662,10 +618,90 @@ async function incrementSpyScore(roomCode) {
     });
 }
 
+function getMissionTeam(){
+    missionTeam = [];
+    playersRef.where("isMissionMember", "==", true).get()
+    .then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id; 
+            missionTeam.push(name);
+        })
+        document.getElementById('mission-team').innerHTML = "Mission Members: " + [...new Set(missionTeam)]
+    })
+}
+
+// update for isMissionLeader
+async function updateIsMissionLeader(roomCode, leader) {
+    db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id;
+            if (name == leader) {
+                setIsMissionLeader(roomCode, name, true);
+            } 
+            else {
+                setIsMissionLeader(roomCode, name, false);
+            }
+        });
+    });
+}
+
+// increment round by one
+async function incrementRound(roomCode) {
+    db.collection("Rooms").doc(roomCode).update({
+        round: (await getRound(roomCode) + 1)
+    });
+}
+
+// increment downvoteCounter by one
+async function incrementDownvoteCounter(roomCode) {
+    db.collection("Rooms").doc(roomCode).update({
+        downvoteCounter: (await getDownvoteCounter(roomCode) + 1)
+    });
+}
+
 // reset spyScore to zero
 async function resetSpyScore(roomCode) {
     db.collection("Rooms").doc(roomCode).update({
         spyScore: 0
+    });
+}
+function resetMissionTeam(){
+    missionTeam = [];
+    console.log("MissionTeamInReset: " + missionTeam)
+    playersRef.get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id; 
+            setIsMissionMember(roomId, name, false);
+        })
+    })
+}
+
+
+// reset downvoteCounter to zero
+function resetDownvoteCounter(roomCode) {
+    db.collection("Rooms").doc(roomCode).update({
+        downvoteCounter: 0
+    });
+}
+
+async function resetLeader(roomCode) {
+    db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id;
+            setIsMissionLeader(roomCode, name, false);
+        });
+    });
+}
+
+
+// reset all votes, hasVoted
+async function clearVotes(roomCode) {
+    db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
+        snapshot.docs.forEach(doc => {
+            let name = doc.id;
+            setHasVoted(roomCode, name, false);
+            setVote(roomCode, name, false);
+        });
     });
 }
 
@@ -715,7 +751,7 @@ function getOrder(roomCode){
     });
 }
 
-// PLAYER METHODS
+//--------------------------- PLAYER METHODS -----------------------------------
 
 // returns a player with a given name - null if none exists
 async function getPlayer(roomCode, name) { 
