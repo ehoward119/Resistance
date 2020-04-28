@@ -39,6 +39,8 @@ let numMissionMembers = 0
 let order = []
 let missionTeam = []
 let leaderIndex =0
+let localResScore = 0
+let localSpyScore = 0
 
 // -------------------------------------------------------------------------------
 // Running the game
@@ -47,6 +49,9 @@ let leaderIndex =0
 // Host starts the game with helper function
 console.log("Host: " + isHost);
 console.log("Name: " + playerName);
+missionMembers.style.display = "none"
+selectingMembers.style.display = "none"
+missionPoll.style.display = "none"
 if (isHost == "yes") {
     startUp();
 } else {
@@ -55,14 +60,15 @@ if (isHost == "yes") {
     console.log("numMissionMembersList: " + numMissionMembersList);})
 }
 
+
 // Everyone listens for changes in the database
 playersRef.onSnapshot(async (snapshot) =>{
-    missionMembers.style.display = "none"
-    selectingMembers.style.display = "none"
-    missionPoll.style.display = "none"
+    if(!snapshot.hasPendingWrites){
+
     let gameState = await getGameState(roomId);
-    console.log("GameState: " + gameState)
     if (gameState== "selecting"){
+        missionMembers.style.display = "none"
+        missionPoll.style.display = "none"
         let leaderStatus = await getIsMissionLeader(roomId, playerName);
         console.log("leaderStatus: " + leaderStatus);
         // If leader, make them select their team
@@ -79,11 +85,10 @@ playersRef.onSnapshot(async (snapshot) =>{
         } 
     } 
     else if (gameState == "voting"){
-        document.getElementById("scoreUpdate").style.display = "none"
-        selectingMembers.style.display = "block"
-        document.getElementById("ML_status").innerHTML ="Cast your vote & Wait";
-        displaySelectedTeam(missionTeam);
         // Check the everyone has voted
+        missionMembers.style.display = "none"
+        missionPoll.style.display = "none"
+        getMissionTeam();
         if(isHost== "yes"){
             allVotes = true
             snapshot.docs.forEach( doc =>{
@@ -98,10 +103,6 @@ playersRef.onSnapshot(async (snapshot) =>{
     } 
     // We're now on  a mission
     else if (gameState == "inMission"){
-        let isMissionMember = await getIsMissionMember(roomId, playerName)
-        if(isMissionMember){
-            missionPoll.style.display = "block"
-        }
         // Host listens for any vote, and changes the state if need be
         if (isHost == "yes") {
             console.log("Checking for mission votes")
@@ -130,23 +131,19 @@ playersRef.onSnapshot(async (snapshot) =>{
                 // Rule of 2 failures in round 4
                 if(round != 4){
                     if(spyVote > 0){
-                        document.getElementById("scoreUpdate").innerHTML = "Spies win this round!"
                         incrementSpyScore(roomId).then( () => {
                             incrementRound(roomId).then(moveToNewRound())
                         })
                     } else {
-                        document.getElementById("scoreUpdate").innerHTML = "The Resistance wins this round!"
                         incrementResistanceScore(roomId).then( () => {
                             incrementRound(roomId).then(moveToNewRound())
                         })
                     }
                 } else if(spyVote>1){
-                    document.getElementById("scoreUpdate").innerHTML = "Spies win this round!"
                     incrementSpyScore(roomId).then(()=> {
                         incrementRound(roomId).then(moveToNewRound())
                     })
                 } else {
-                    document.getElementById("scoreUpdate").innerHTML = "The Resistance wins this round!"
                     incrementResistanceScore(roomId).then( () => {
                         incrementRound(roomId).then(moveToNewRound())
                     })
@@ -154,7 +151,7 @@ playersRef.onSnapshot(async (snapshot) =>{
             }
         }
     }
-    
+    }   
 })
 
 //Handles moving to a new round
@@ -171,24 +168,34 @@ selectionButton.addEventListener('click', () => {
     missionTeam = selectMissionTeam();
     console.log(missionTeam);
     if (missionTeam.length != 0){
-        updateMissionTeam(missionTeam).then(
-        setAcceptingVotes(roomId, true).then( 
-        setGameState(roomId, "voting")
-        ))
-        // TODO: set round in this SOMEWHERE HERE
+        updateMissionTeam(missionTeam).then( () =>{
+            setGameState(roomId, "voting")
+            setAcceptingVotes(roomId, true)
+        })        
     }
-    });
+});
 
 // Listener for the ROOM as a whole, can be used to check changes in state
 // and trigger certain events
 roomRef.onSnapshot((snapshot) =>{
-    resistScore.innerHTML="Stagthenas: " + snapshot.data().resistanceScore
-    spyScore.innerHTML="Sagehens: " + snapshot.data().spyScore
+document.getElementById('order').innerHTML = "The rotation order is: " + snapshot.data().order
+if(!snapshot.hasPendingWrites){
+    console.log("GameState: " + snapshot.data().gameState)
+    updateScores(snapshot)
+    if(checkWin(snapshot)) {return}
+    if (snapshot.data().gameState == "selecting"){
+        selectingMembers.style.display = "none"
+    }
     if (snapshot.data().gameState == "voting"){
         // Reset parameters and allow for voting
         clearVotes(roomId)
-        getMissionTeam();
+        //getMissionTeam();
         resetLeader(roomId)
+        
+        document.getElementById("scoreUpdate").style.display = "none"
+        selectingMembers.style.display = "block"
+        document.getElementById("ML_status").innerHTML ="Cast your vote & Wait";
+        
         yesButton.disabled= false
         noButton.disabled=false
     }
@@ -230,6 +237,8 @@ roomRef.onSnapshot((snapshot) =>{
         }
     }
     else if(snapshot.data().gameState == "inMission") {
+        missionMembers.style.display = "none"
+        selectingMembers.style.display = "none"
         document.getElementById("ML_status").innerHTML ="Vote Passed! Waiting for mission member decision";
         // Check if we belong to the mission, and display the necessary stuff
         getIsMissionMember(roomId, playerName).then((result) =>{
@@ -238,6 +247,7 @@ roomRef.onSnapshot((snapshot) =>{
            }
         }) 
     }
+}
 })
 
 yesButton.addEventListener('click', () =>{
@@ -275,7 +285,7 @@ async function updateMissionTeam(team){
     })
 }
 
-async function getMissionTeam(){
+function getMissionTeam(){
     missionTeam = [];
     playersRef.where("isMissionMember", "==", true).get()
     .then(snapshot => {
@@ -283,8 +293,7 @@ async function getMissionTeam(){
             let name = doc.id; 
             missionTeam.push(name);
         })
-        console.log("missionTeamInGet: " + missionTeam);
-        document.getElementById('mission-team').innerHTML = "Mission Members: "+missionTeam
+        document.getElementById('mission-team').innerHTML = "Mission Members: " + [...new Set(missionTeam)]
     })
 }
 
@@ -309,11 +318,10 @@ identityButton.addEventListener('click', () => {
 // Helper Functions for running the game
 // -------------------------------------------------------------------------------
 async function startUp() {
-    // NEEDS TO BE DONE ONCE
     // ******** Night Time ********
     numMissionMembersList = await nightTime(order);
-    console.log("Order: " + order)
-    // This works ^_^
+    setOrder(roomId, order)
+    // This works
     // numMissionMembersList = People needed per mission
     // order= mission member order
 
@@ -329,12 +337,6 @@ async function startUp() {
     console.log("NumMissionMembersList: " + numMissionMembersList)
 }
 
-// TEST FUNCTIONS
-function simulateRound() {
-    let actions = ["pass", "fail", "downvote", "downvote"];
-    shuffle(actions);
-    return actions[0]; 
-}
 
 // randomly assign roles
 // returns array with the number of mission member indexed by round
@@ -369,7 +371,7 @@ function assignNumMissionMembers(players){
     switch (players) {
         case 3:
             roles = [true, true, false];
-            numMissionMembersList = [1, 2, 3, 1, 0]; //weird numbers for testing
+            numMissionMembersList = [1, 2, 3, 3, 2]; //weird numbers for testing
             numMissionMembers = 1;
             break;
 
@@ -419,12 +421,6 @@ function assignNumMissionMembers(players){
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
       let j = Math.floor(Math.random() * (i + 1)); // random index from 0 to i
-  
-      // swap elements array[i] and array[j]
-      // we use "destructuring assignment" syntax to achieve that
-      // you'll find more details about that syntax in later chapters
-      // same can be written as:
-      // let t = array[i]; array[i] = array[j]; array[j] = t
       [array[i], array[j]] = [array[j], array[i]];
     }
 }
@@ -436,12 +432,6 @@ async function getSecretIDHelp() {
     else alert("You're a sagehen!")
 }
 
-// incremements the round, reseting all applicable variables
-async function newRound(roomCode, leader) {
-    await updateIsMissionLeader(roomCode, leader);
-    await clearVotes(roomCode);
-    await incrementRound(roomCode);
-}
 
 // reset downvoteCounter to zero
 function resetDownvoteCounter(roomCode) {
@@ -474,6 +464,21 @@ async function resetLeader(roomCode) {
     });
 }
 
+function updateScores(snapshot){
+    resistScore.innerHTML="Stagthenas: " + snapshot.data().resistanceScore
+    spyScore.innerHTML="Sagehens: " + snapshot.data().spyScore
+    if(snapshot.data().spyScore > localSpyScore) {
+        document.getElementById("scoreUpdate").style.display="block"
+        document.getElementById("scoreUpdate").innerHTML = "Sagehens win this round!"
+        localSpyScore += 1
+    }
+    if(snapshot.data().resistanceScore > localResScore){
+        document.getElementById("scoreUpdate").style.display="block"
+        document.getElementById("scoreUpdate").innerHTML = "Stagthenas wins this round!"
+        localResScore += 1
+    }
+}
+
 // reset all votes, hasVoted
 async function clearVotes(roomCode) {
     db.collection('Rooms').doc(roomCode).collection('Players').get().then(snapshot => {
@@ -502,18 +507,16 @@ async function incrementDownvoteCounter(roomCode) {
 //Displays Mission members to be selected by the mission leader
 //Adds each player to the list and displays it w a checkbox
 //IDEA: Add functionality to only display title and list here, starts invisible
-async function displayMissionMembers(){
+function displayMissionMembers(){
     missionMembers.style.display = "block"
     selectionButton.disabled = false;
     document.getElementById("select-msg").innerHTML = "Select " + numMissionMembers + " Mission Members:";
     let list = document.getElementById("mission-members")
-    await playersRef.get().then(snapshot => {
+    playersRef.get().then(snapshot => {
         while (list.firstChild) {
             list.removeChild(list.lastChild);
         }
         snapshot.docs.forEach(doc => {
-            // TODO: not make a list every 5 seconds
-            // TODO: display this information only to the host
             let name = doc.id;
             let li = document.createElement("li");
             let t = document.createTextNode(name);
@@ -569,6 +572,23 @@ function displaySelectedTeam(members){
     document.getElementById("mission-team").innerHTML = "Mission Members: " + team;
 }
 
+// Simple function to check for win condition
+function checkWin(snapshot){
+    if(snapshot.data().resistanceScore == 3 || snapshot.data().spyScore == 3 ){
+        missionPoll.remove()
+        missionMembers.remove()
+        selectingMembers.remove()
+        if (snapshot.data().resistanceScore == 3 ){
+            document.getElementById("ML_status").innerHTML ="Stagthenas win! Refresh page to play again";
+        } else {
+            document.getElementById("ML_status").innerHTML ="Sagehens win! Refresh page to play again";
+        }
+        setGameState(roomId, "over")
+        return true
+    } else {
+        return false
+    }
+}
 
 // -------------------------------------------------------------------------------
 // Getter and Setter Functions
@@ -673,7 +693,25 @@ function setGameState(roomCode, value) {
     });
 }
 
+function setOrder(roomCode, newOrder){ 
+    stringOrd =""
+    for (let i =0; i < newOrder.length; i++){
+        if ( i ==  newOrder.length -1){
+            stringOrd += newOrder[i]+" "
+        } else {
+            stringOrd += newOrder[i]+", "
+        }
+    }
+    db.collection("Rooms").doc(roomCode).update({
+        order: stringOrd
+    });
+}
 
+function getOrder(roomCode){
+    getRoom(roomCode).then(doc =>{
+        return doc.data().order;
+    });
+}
 
 // PLAYER METHODS
 
@@ -772,3 +810,4 @@ function setIsMissionMember(roomCode, name, value) {
         isMissionMember: value
     });
 }
+
