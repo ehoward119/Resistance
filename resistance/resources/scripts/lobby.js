@@ -17,7 +17,10 @@ document.getElementById('hostName').innerHTML =
 
 // test for sean and peace of mind
 console.log("Host: " + isHost);
-
+if(isHost !="yes"){
+    document.getElementById('start').style.display = "none"
+    document.getElementById('ifPlayer').innerHTML = "Waiting for your host to start game" 
+}
 // -------------------------------------------------------------------------------
 // Listener for any change on the database (adding players)
 // IDK if this function could be turned into a helper and placed into the function below

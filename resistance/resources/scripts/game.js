@@ -88,6 +88,7 @@ playersRef.onSnapshot(async (snapshot) =>{
         // Check the everyone has voted
         missionMembers.style.display = "none"
         missionPoll.style.display = "none"
+
         getMissionTeam();
         if(isHost== "yes"){
             allVotes = true
@@ -189,15 +190,16 @@ if(!snapshot.hasPendingWrites){
     if (snapshot.data().gameState == "voting"){
         // Reset parameters and allow for voting
         clearVotes(roomId)
-        //getMissionTeam();
         resetLeader(roomId)
-        
         document.getElementById("scoreUpdate").style.display = "none"
         selectingMembers.style.display = "block"
-        document.getElementById("ML_status").innerHTML ="Cast your vote & Wait";
-        
         yesButton.disabled= false
         noButton.disabled=false
+        if (snapshot.data().downvoteCounter != 5){
+            document.getElementById("ML_status").innerHTML ="Cast your vote & Wait";
+        } else { // We reached the downvote max
+            document.getElementById("ML_status").innerHTML ="Maximum amount of downvotes! This team will pass, but cast your vote to continue";
+        }
     }
     else if(snapshot.data().gameState == "counting"){
         yesButton.disabled= true
@@ -211,7 +213,7 @@ if(!snapshot.hasPendingWrites){
                 if (playerVote) {numYes++;} 
                 else {numNo++; }
                 })
-                if (numYes>numNo){
+                if (numYes>numNo || snapshot.data().downvoteCounter == 5){
                     clearVotes(roomId).then(() => {
                     setGameState(roomId, "inMission")
                     resetDownvoteCounter(roomId)
@@ -239,7 +241,7 @@ if(!snapshot.hasPendingWrites){
     else if(snapshot.data().gameState == "inMission") {
         missionMembers.style.display = "none"
         selectingMembers.style.display = "none"
-        document.getElementById("ML_status").innerHTML ="Vote Passed! Waiting for mission member decision";
+        document.getElementById("ML_status").innerHTML ="Mission accepted! Waiting for mission member decision";
         // Check if we belong to the mission, and display the necessary stuff
         getIsMissionMember(roomId, playerName).then((result) =>{
            if(result){
