@@ -69,172 +69,52 @@ if (isHost == "yes") {
 
 // Everyone listens for changes in the players collection in the database
 playersRef.onSnapshot(async (snapshot) =>{
-    if(!snapshot.hasPendingWrites){
-    let gameState = await getGameState(roomId);
-
-    if (gameState== "selecting"){
-        missionMembers.style.display = "none"
-        missionPoll.style.display = "none"
-        let leaderStatus = await getIsMissionLeader(roomId, playerName);
-        console.log("leaderStatus: " + leaderStatus);
-        // If leader, make them select their team
-        if(leaderStatus){
-            document.getElementById("ML_status").innerHTML = "You are now the mission leader.";
-            let round = await getRound(roomId);
-            console.log("Round: " + round);
-            numMissionMembers = numMissionMembersList[round]; 
-            console.log("New numMissionMembers = "+ numMissionMembers)
-            displayMissionMembers();
-            // Wait for the player click select team
-        } else {
-            document.getElementById("ML_status").innerHTML ="Mission leader is selecting team";
-        } 
-    } 
-    else if (gameState == "voting"){
-        // Check the everyone has voted
-        missionMembers.style.display = "none"
-        missionPoll.style.display = "none"
-
-        getMissionTeam();
-        if(isHost== "yes"){
-            allVotes = true
-            snapshot.docs.forEach( doc =>{
-                if (!doc.data().hasVoted){
-                    allVotes=false
-                }
-            })
-            if (allVotes){
-                setGameState(roomId, "counting")
-            }
+    if(!snapshot.hasPendingWrites){ // Prevent multiple writes if only local copy has changed
+        let gameState = await getGameState(roomId);
+        // Make a decision based on the game's current state
+        switch(gameState){
+            case "selecting":
+                await playerStateSelecting()
+                break;
+            case "voting":
+                playerStateVoting(snapshot)
+                break;
+            case "inMission":
+                await playerStateInMission(snapshot)
+                break;
+            default:
+                return
         }
-    } 
-    // We're now on  a mission
-    else if (gameState == "inMission"){
-        // Host listens for any vote, and changes the state if need be
-        if (isHost == "yes") {
-            console.log("Checking for mission votes")
-            allVotes = true
-            // First check if all mission members have voted
-            snapshot.docs.forEach( doc =>{
-                if (doc.data().isMissionMember){
-                    if(!doc.data().hasVoted){
-                        allVotes=false
-                    }
-                }
-            })
-            // If everyone has voted, count the votes
-            let spyVote = 0
-            if (allVotes){
-                console.log("all (mission member) votes are in!")
-                snapshot.docs.forEach( doc =>{
-                    if (doc.data().isMissionMember){
-                        if(!doc.data().vote){ // "True" reprsents a pass here
-                            spyVote += 1
-                        } 
-                    }
-                })
-                document.getElementById("scoreUpdate").style.display="block"
-                let round = await getRound(roomId)
-                // Rule of 2 failures in round 4
-                if(round != 4){
-                    if(spyVote > 0){
-                        incrementSpyScore(roomId).then( () => {
-                            incrementRound(roomId).then(moveToNewRound())
-                        })
-                    } else {
-                        incrementResistanceScore(roomId).then( () => {
-                            incrementRound(roomId).then(moveToNewRound())
-                        })
-                    }
-                } else if(spyVote>1){
-                    incrementSpyScore(roomId).then(()=> {
-                        incrementRound(roomId).then(moveToNewRound())
-                    })
-                } else {
-                    incrementResistanceScore(roomId).then( () => {
-                        incrementRound(roomId).then(moveToNewRound())
-                    })
-                }
-            }
-        }
-    }
     }   
 })
 
 // Listener for the ROOM as a whole, can be used to check changes in state
 // and trigger certain events
 roomRef.onSnapshot((snapshot) =>{
-document.getElementById('order').innerHTML = "The rotation order is: " + snapshot.data().order
-if(!snapshot.hasPendingWrites){
-    console.log("GameState: " + snapshot.data().gameState)
-    updateScores(snapshot)
-    if(checkWin(snapshot)) {return}
-    if (snapshot.data().gameState == "selecting"){
-        selectingMembers.style.display = "none"
-    }
-    if (snapshot.data().gameState == "voting"){
-        // Reset parameters and allow for voting
-        clearVotes(roomId)
-        resetLeader(roomId)
-        document.getElementById("scoreUpdate").style.display = "none"
-        selectingMembers.style.display = "block"
-        yesButton.disabled= false
-        noButton.disabled=false
-        if (snapshot.data().downvoteCounter != 5){
-            document.getElementById("ML_status").innerHTML ="Cast your vote & Wait";
-        } else { // We reached the downvote max
-            document.getElementById("ML_status").innerHTML ="Maximum amount of downvotes! This team will pass, but cast your vote to continue";
+    document.getElementById('order').innerHTML = "The rotation order is: " + snapshot.data().order
+    if(!snapshot.hasPendingWrites){
+        console.log("GameState: " + snapshot.data().gameState)
+        updateScores(snapshot)
+        // Check for a win
+        if(checkWin(snapshot)) {return}
+        // Make a decision based on game's state
+        switch(snapshot.data().gameState){
+            case "selecting":
+                roomStateSelecting()   
+                break;
+            case "voting":
+                roomStateVoting(snapshot)
+                break;
+            case "counting":
+                roomStateCounting(snapshot)
+                break;
+            case "inMission":
+                roomStateInMission()
+                break;
+            default:
+                return;
         }
     }
-    else if(snapshot.data().gameState == "counting"){
-        yesButton.disabled= true
-        noButton.disabled=true
-        if(isHost =="yes"){
-            let numYes = 0;
-            let numNo = 0;
-            playersRef.get().then(docs => { 
-                docs.forEach(doc => {
-                let playerVote = doc.data().vote;
-                if (playerVote) {numYes++;} 
-                else {numNo++; }
-                })
-                if (numYes>numNo || snapshot.data().downvoteCounter == 5){
-                    clearVotes(roomId).then(() => {
-                    setGameState(roomId, "inMission")
-                    resetDownvoteCounter(roomId)
-                    leaderIndex +=1
-                    leaderIndex = leaderIndex % numPlayers
-                    updateIsMissionLeader(roomId, order[leaderIndex])
-                    })
-                    
-                } else{
-                    // -- Can be helper function ------------------------
-                    clearVotes(roomId).then( () =>{
-                    resetMissionTeam()
-                    leaderIndex +=1
-                    leaderIndex = leaderIndex % numPlayers
-                    updateIsMissionLeader(roomId, order[leaderIndex])
-                    setGameState(roomId, "selecting")
-                    // --------------------------------------------------
-                    incrementDownvoteCounter(roomId)
-                    })
-                    console.log("Mission did not pass")
-                }
-            })
-        }
-    }
-    else if(snapshot.data().gameState == "inMission") {
-        missionMembers.style.display = "none"
-        selectingMembers.style.display = "none"
-        document.getElementById("ML_status").innerHTML ="Mission accepted! Waiting for mission member decision";
-        // Check if we belong to the mission, and display the necessary stuff
-        getIsMissionMember(roomId, playerName).then((result) =>{
-           if(result){
-                missionPoll.style.display = "block"
-           }
-        }) 
-    }
-}
 })
 
 // -------------------------------------------------------------------------------
@@ -291,6 +171,177 @@ failButton.addEventListener('click', () =>{
 // -------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------
+//--------------------- GAME STATE FUNCTIONS -------------------------------------
+//--------------------------------------------------------------------------------
+
+//----------------------------- Player State Helpers -----------------------------
+async function playerStateSelecting() {
+    missionMembers.style.display = "none"
+    missionPoll.style.display = "none"
+    let leaderStatus = await getIsMissionLeader(roomId, playerName);
+    console.log("leaderStatus: " + leaderStatus);
+    // If leader, make them select their team
+    if(leaderStatus){
+        document.getElementById("ML_status").innerHTML = "You are now the mission leader.";
+        let round = await getRound(roomId);
+        console.log("Round: " + round);
+        numMissionMembers = numMissionMembersList[round]; 
+        console.log("New numMissionMembers = "+ numMissionMembers)
+        displayMissionMembers();
+        // Wait for the player click select team
+    } else {
+        document.getElementById("ML_status").innerHTML ="Mission leader is selecting team";
+    } 
+}
+
+function playerStateVoting(snapshot){
+    missionMembers.style.display = "none"
+    missionPoll.style.display = "none"
+    getMissionTeam();
+    // Check the everyone has voted
+     if(isHost== "yes"){
+         allVotes = true
+         snapshot.docs.forEach( doc =>{
+             if (!doc.data().hasVoted){
+                 allVotes=false
+             }
+         })
+         if (allVotes){
+             setGameState(roomId, "counting")
+         }
+     }
+}
+
+async function playerStateInMission(snapshot){
+    // Host listens for any vote, and changes the state if need be
+    if (isHost == "yes") {
+        console.log("Checking for mission votes")
+        allVotes = true
+        // First check if all mission members have voted
+        snapshot.docs.forEach( doc =>{
+            if (doc.data().isMissionMember){
+                if(!doc.data().hasVoted){
+                    allVotes=false
+                }
+            }
+        })
+        // If everyone has voted, count the votes
+        let spyVote = 0
+        if (allVotes){
+            console.log("all (mission member) votes are in!")
+            snapshot.docs.forEach( doc =>{
+                if (doc.data().isMissionMember){
+                    if(!doc.data().vote){ // "True" reprsents a pass here
+                        spyVote += 1
+                    } 
+                }
+            })
+            document.getElementById("scoreUpdate").style.display="block"
+            let round = await getRound(roomId)
+            // Rule of 2 failures in round 4
+            if(round != 4){
+                if(spyVote > 0){
+                    incrementSpyScore(roomId).then( () => {
+                        incrementRound(roomId).then(moveToNewRound())
+                    })
+                } else {
+                    incrementResistanceScore(roomId).then( () => {
+                        incrementRound(roomId).then(moveToNewRound())
+                    })
+                }
+            } else if(spyVote>1){
+                incrementSpyScore(roomId).then(()=> {
+                    incrementRound(roomId).then(moveToNewRound())
+                })
+            } else {
+                incrementResistanceScore(roomId).then( () => {
+                    incrementRound(roomId).then(moveToNewRound())
+                })
+            }
+        }
+    }
+}
+
+//--------------------------- Room State Helpers ---------------------------------
+
+function roomStateSelecting(){
+    selectingMembers.style.display = "none"
+}
+
+function roomStateVoting(snapshot){
+    // Reset parameters and allow for voting
+    clearVotes(roomId)
+    resetLeader(roomId)
+    // Ensure proper display of elements
+    document.getElementById("scoreUpdate").style.display = "none"
+    selectingMembers.style.display = "block"
+    // Enable voting buttons
+    yesButton.disabled= false
+    noButton.disabled=false
+    // Check if we've downvoted too much
+    if (snapshot.data().downvoteCounter != 4){
+        document.getElementById("ML_status").innerHTML ="Cast your vote & Wait";
+    } else { // We reached the downvote max
+        document.getElementById("ML_status").innerHTML ="Maximum amount of downvotes! This team will pass, but cast your vote to continue";
+    }
+}
+
+function roomStateCounting(snapshot){
+    yesButton.disabled= true
+    noButton.disabled=true
+    // If host, count the votes
+    if(isHost =="yes"){
+        let numYes = 0;
+        let numNo = 0;
+        playersRef.get().then(docs => { 
+            docs.forEach(doc => {
+            let playerVote = doc.data().vote;
+            if (playerVote) {numYes++;} 
+            else {numNo++; }
+            })
+            if (numYes>numNo || snapshot.data().downvoteCounter == 5){
+                clearVotes(roomId).then(() => {
+                setGameState(roomId, "inMission")
+                resetDownvoteCounter(roomId)
+                leaderIndex +=1
+                leaderIndex = leaderIndex % numPlayers
+                updateIsMissionLeader(roomId, order[leaderIndex])
+                })
+                
+            } else{
+                // -- Can be helper function ------------------------
+                clearVotes(roomId).then( () =>{
+                resetMissionTeam()
+                leaderIndex +=1
+                leaderIndex = leaderIndex % numPlayers
+                updateIsMissionLeader(roomId, order[leaderIndex])
+                setGameState(roomId, "selecting")
+                // --------------------------------------------------
+                incrementDownvoteCounter(roomId)
+                })
+                console.log("Mission did not pass")
+            }
+        })
+    }
+}
+
+function roomStateInMission(){
+    // Ensure proper display
+    missionMembers.style.display = "none"
+    selectingMembers.style.display = "none"
+    document.getElementById("ML_status").innerHTML ="Mission accepted! Waiting for mission member decision";
+    // Check if we belong to the mission, and display "pass/fail" option
+    getIsMissionMember(roomId, playerName).then((result) =>{
+       if(result){
+            missionPoll.style.display = "block"
+       }
+    }) 
+}
+
+//--------------------------------------------------------------------------------
+//------------------------- GAMEPLAY HELPERS -------------------------------------
+//--------------------------------------------------------------------------------
 
 //--------------------- Set up functions -----------------------------------------
 
@@ -519,7 +570,6 @@ function updateScores(snapshot){
     }
 }
 
-
 //------------------------------- End game function --------------------------------
 
 // Simple function to check for win condition
@@ -534,9 +584,9 @@ function checkWin(snapshot){
         document.getElementById('ML_status').style.display = "none"
         document.getElementById('win_msg').style.display = "block"
         if (snapshot.data().resistanceScore == 3 ){
-            document.getElementById("win_msg").innerHTML ="Stagthenas win! Refresh the page to play again.";
+            document.getElementById("win_msg").innerHTML ="Stagthenas win! Refresh the page twice to play again.";
         } else {
-            document.getElementById("win_msg").innerHTML ="Sagehens win! Refresh the page to play again.";
+            document.getElementById("win_msg").innerHTML ="Sagehens win! Refresh the page twice to play again.";
         }
         setGameState(roomId, "over")
         return true
